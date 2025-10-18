@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { collection, addDoc, updateDoc, doc } from 'firebase/firestore';
+import React, { useState, useEffect } from 'react';
+import { collection, addDoc, updateDoc, doc, increment } from 'firebase/firestore';
 import { db, auth } from '../../firebase/firebase';
 import '../../styles/propertylistingstyle.css';
 
@@ -20,16 +20,19 @@ function PropertyListing({ onSave, initialData = {} }) {
     beds: initialData.beds || 1,
     bathrooms: initialData.bathrooms || 1,
     status: initialData.status || 'draft',
-    // NEW: Added for points & rewards
     hostPoints: initialData.hostPoints || 0,
     isFeatured: initialData.isFeatured || false,
-    // NEW: Added for policy compliance
     cancellationPolicy: initialData.cancellationPolicy || 'flexible',
-    houseRules: initialData.houseRules || []
+    houseRules: initialData.houseRules || [],
+    checkInTime: initialData.checkInTime || '15:00',
+    checkOutTime: initialData.checkOutTime || '11:00',
+    minimumStay: initialData.minimumStay || 1,
+    maximumStay: initialData.maximumStay || 30
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [imageUrls, setImageUrls] = useState(initialData.images || []);
+  const [earnedPoints, setEarnedPoints] = useState(0);
 
   const categories = [
     { value: 'home', label: 'Home/Apartment', icon: '🏠' },
@@ -54,23 +57,81 @@ function PropertyListing({ onSave, initialData = {} }) {
     'Check-in after 3 PM', 'Check-out before 11 AM', 'No loud noise after 10 PM'
   ];
 
-  // NEW: Image upload handler
+  // Auto-save functionality
+  useEffect(() => {
+    if ((formData.title || formData.description) && !initialData.id) {
+      const autoSaveTimer = setTimeout(() => {
+        if (!isSubmitting) {
+          handleAutoSave();
+        }
+      }, 30000);
+      
+      return () => clearTimeout(autoSaveTimer);
+    }
+  }, [formData.title, formData.description]);
+
+  // Calculate points for publishing
+  const calculateHostPoints = () => {
+    let points = 0;
+    
+    // Base points for creating listing
+    points += 10;
+    
+    // Points for completeness
+    if (formData.images.length >= 3) points += 20;
+    if (formData.amenities.length >= 5) points += 15;
+    if (formData.description.length > 100) points += 10;
+    if (formData.title.length > 10) points += 5;
+    
+    // Points for quality
+    if (formData.images.length >= 5) points += 25;
+    if (formData.amenities.length >= 10) points += 20;
+    if (formData.description.length > 200) points += 15;
+    
+    // Bonus for featured-ready listings
+    if (points >= 50) points += 10;
+    
+    return points;
+  };
+
+  const handleAutoSave = async () => {
+    if (!formData.title && !formData.description) return;
+    
+    try {
+      const user = auth.currentUser;
+      const propertyData = {
+        ...formData,
+        hostId: user.uid,
+        hostName: user.displayName,
+        hostEmail: user.email,
+        status: 'draft',
+        createdAt: initialData.id ? formData.createdAt : new Date(),
+        updatedAt: new Date(),
+        lastSavedAt: new Date()
+      };
+
+      if (initialData.id) {
+        await updateDoc(doc(db, 'properties', initialData.id), propertyData);
+      }
+      console.log('Auto-saved draft');
+    } catch (error) {
+      console.error('Error auto-saving:', error);
+    }
+  };
+
   const handleImageUpload = (e) => {
     const files = Array.from(e.target.files);
-    // Simulate image upload - in real app, upload to Firebase Storage
     const newImageUrls = files.map(file => URL.createObjectURL(file));
     setImageUrls(prev => [...prev, ...newImageUrls]);
     setFormData(prev => ({ ...prev, images: [...prev.images, ...newImageUrls] }));
   };
 
-  // NEW: Remove image
   const handleRemoveImage = (index) => {
     const newImages = imageUrls.filter((_, i) => i !== index);
     setImageUrls(newImages);
     setFormData(prev => ({ ...prev, images: newImages }));
   };
 
-  // NEW: Handle house rules toggle
   const handleHouseRuleToggle = (rule) => {
     setFormData(prev => ({
       ...prev,
@@ -90,10 +151,9 @@ function PropertyListing({ onSave, initialData = {} }) {
         hostName: user.displayName,
         hostEmail: user.email,
         status: 'draft',
-        createdAt: new Date(),
+        createdAt: initialData.id ? formData.createdAt : new Date(),
         updatedAt: new Date(),
-        // NEW: Points system
-        hostPoints: initialData.hostPoints || 0
+        lastSavedAt: new Date()
       };
 
       if (initialData.id) {
@@ -113,14 +173,14 @@ function PropertyListing({ onSave, initialData = {} }) {
   };
 
   const handlePublish = async () => {
-    if (!formData.title || !formData.description || !formData.price || !formData.location.address) {
-      alert('Please fill all required fields: Title, Description, Price, and Address');
-      return;
-    }
+    if (!validateForm()) return;
 
     setIsSubmitting(true);
     try {
       const user = auth.currentUser;
+      const pointsEarned = calculateHostPoints();
+      setEarnedPoints(pointsEarned);
+
       const propertyData = {
         ...formData,
         hostId: user.uid,
@@ -130,24 +190,56 @@ function PropertyListing({ onSave, initialData = {} }) {
         publishedAt: new Date(),
         createdAt: initialData.createdAt || new Date(),
         updatedAt: new Date(),
-        // NEW: Award points for publishing
-        hostPoints: (initialData.hostPoints || 0) + 50
+        hostPoints: (initialData.hostPoints || 0) + pointsEarned,
+        isFeatured: pointsEarned >= 50,
+        views: 0,
+        bookingsCount: 0,
+        rating: 0,
+        reviewCount: 0
       };
 
+      let result;
       if (initialData.id) {
         await updateDoc(doc(db, 'properties', initialData.id), propertyData);
+        result = { id: initialData.id };
       } else {
-        await addDoc(collection(db, 'properties'), propertyData);
+        result = await addDoc(collection(db, 'properties'), propertyData);
       }
+
+      // Update user's total points
+      const userRef = doc(db, 'users', user.uid);
+      await updateDoc(userRef, {
+        totalPoints: increment(pointsEarned),
+        lastPointsEarned: pointsEarned,
+        lastPointsActivity: new Date()
+      });
+
+      alert(`Listing published successfully! +${pointsEarned} Points! 🎉`);
+      if (onSave) onSave(result.id);
       
-      alert('Property published successfully! +50 Host Points! 🎉');
-      if (onSave) onSave();
     } catch (error) {
       console.error('Error publishing property:', error);
       alert('Error publishing property. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const validateForm = () => {
+    const errors = [];
+    if (!formData.title.trim()) errors.push('Title is required');
+    if (!formData.description.trim()) errors.push('Description is required');
+    if (!formData.price || formData.price <= 0) errors.push('Valid price is required');
+    if (!formData.location.address.trim()) errors.push('Address is required');
+    if (!formData.location.city.trim()) errors.push('City is required');
+    if (!formData.location.country.trim()) errors.push('Country is required');
+    if (formData.images.length === 0) errors.push('At least one image is required');
+
+    if (errors.length > 0) {
+      alert('Please fix the following errors:\n' + errors.join('\n'));
+      return false;
+    }
+    return true;
   };
 
   const handleAmenityToggle = (amenity) => {
@@ -161,16 +253,12 @@ function PropertyListing({ onSave, initialData = {} }) {
 
   return (
     <div className="property-form">
-      {/* NEW: Points Display */}
-      <div className="points-display">
-        <div className="points-card">
-          <span className="points-icon">⭐</span>
-          <div className="points-info">
-            <h4>Host Points: {formData.hostPoints}</h4>
-            <p>Publish listings to earn rewards!</p>
-          </div>
-        </div>
-      </div>
+      {/* Enhanced Points Display */}
+      <PointsDisplay 
+        points={formData.hostPoints} 
+        earnedPoints={earnedPoints}
+        potentialPoints={calculateHostPoints()}
+      />
 
       <div className="form-section">
         <h3>Basic Information</h3>
@@ -212,10 +300,10 @@ function PropertyListing({ onSave, initialData = {} }) {
             onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
             rows="4"
           />
+          <div className="char-counter">{formData.description.length} characters</div>
         </div>
       </div>
 
-      {/* NEW: Image Upload Section */}
       <div className="form-section">
         <h3>Property Images</h3>
         <div className="image-upload-area">
@@ -248,6 +336,12 @@ function PropertyListing({ onSave, initialData = {} }) {
               </div>
             ))}
           </div>
+          {imageUrls.length > 0 && (
+            <div className="image-stats">
+              {imageUrls.length} image{imageUrls.length !== 1 ? 's' : ''} uploaded • 
+              {imageUrls.length >= 3 ? ' ✅' : ' ❌'} Minimum 3 images required for bonus points
+            </div>
+          )}
         </div>
       </div>
 
@@ -291,6 +385,71 @@ function PropertyListing({ onSave, initialData = {} }) {
                 location: { ...prev.location, country: e.target.value }
               }))}
             />
+          </div>
+        </div>
+      </div>
+
+      <div className="form-section">
+        <h3>Property Details</h3>
+        <div className="details-grid">
+          <div className="detail-item">
+            <label>Max Guests</label>
+            <div className="counter-input">
+              <button
+                onClick={() => setFormData(prev => ({ ...prev, maxGuests: Math.max(1, prev.maxGuests - 1) }))}
+                className="counter-btn"
+              >-</button>
+              <span>{formData.maxGuests}</span>
+              <button
+                onClick={() => setFormData(prev => ({ ...prev, maxGuests: prev.maxGuests + 1 }))}
+                className="counter-btn"
+              >+</button>
+            </div>
+          </div>
+          
+          <div className="detail-item">
+            <label>Bedrooms</label>
+            <div className="counter-input">
+              <button
+                onClick={() => setFormData(prev => ({ ...prev, bedrooms: Math.max(0, prev.bedrooms - 1) }))}
+                className="counter-btn"
+              >-</button>
+              <span>{formData.bedrooms}</span>
+              <button
+                onClick={() => setFormData(prev => ({ ...prev, bedrooms: prev.bedrooms + 1 }))}
+                className="counter-btn"
+              >+</button>
+            </div>
+          </div>
+          
+          <div className="detail-item">
+            <label>Beds</label>
+            <div className="counter-input">
+              <button
+                onClick={() => setFormData(prev => ({ ...prev, beds: Math.max(0, prev.beds - 1) }))}
+                className="counter-btn"
+              >-</button>
+              <span>{formData.beds}</span>
+              <button
+                onClick={() => setFormData(prev => ({ ...prev, beds: prev.beds + 1 }))}
+                className="counter-btn"
+              >+</button>
+            </div>
+          </div>
+          
+          <div className="detail-item">
+            <label>Bathrooms</label>
+            <div className="counter-input">
+              <button
+                onClick={() => setFormData(prev => ({ ...prev, bathrooms: Math.max(0, prev.bathrooms - 0.5) }))}
+                className="counter-btn"
+              >-</button>
+              <span>{formData.bathrooms}</span>
+              <button
+                onClick={() => setFormData(prev => ({ ...prev, bathrooms: prev.bathrooms + 0.5 }))}
+                className="counter-btn"
+              >+</button>
+            </div>
           </div>
         </div>
       </div>
@@ -349,9 +508,12 @@ function PropertyListing({ onSave, initialData = {} }) {
             </label>
           ))}
         </div>
+        <div className="amenities-stats">
+          {formData.amenities.length} amenit{formData.amenities.length !== 1 ? 'ies' : 'y'} selected •
+          {formData.amenities.length >= 5 ? ' ✅' : ' ❌'} Minimum 5 amenities for bonus points
+        </div>
       </div>
 
-      {/* NEW: Policy & Rules Section */}
       <div className="form-section">
         <h3>Policies & Rules</h3>
         
@@ -385,6 +547,57 @@ function PropertyListing({ onSave, initialData = {} }) {
             ))}
           </div>
         </div>
+
+        <div className="form-row">
+          <div className="input-group">
+            <label>Check-in Time</label>
+            <select
+              value={formData.checkInTime}
+              onChange={(e) => setFormData(prev => ({ ...prev, checkInTime: e.target.value }))}
+            >
+              <option value="14:00">2:00 PM</option>
+              <option value="15:00">3:00 PM</option>
+              <option value="16:00">4:00 PM</option>
+              <option value="17:00">5:00 PM</option>
+            </select>
+          </div>
+
+          <div className="input-group">
+            <label>Check-out Time</label>
+            <select
+              value={formData.checkOutTime}
+              onChange={(e) => setFormData(prev => ({ ...prev, checkOutTime: e.target.value }))}
+            >
+              <option value="10:00">10:00 AM</option>
+              <option value="11:00">11:00 AM</option>
+              <option value="12:00">12:00 PM</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="form-row">
+          <div className="input-group">
+            <label>Minimum Stay (nights)</label>
+            <input
+              type="number"
+              min="1"
+              max="30"
+              value={formData.minimumStay}
+              onChange={(e) => setFormData(prev => ({ ...prev, minimumStay: e.target.value }))}
+            />
+          </div>
+
+          <div className="input-group">
+            <label>Maximum Stay (nights)</label>
+            <input
+              type="number"
+              min="1"
+              max="365"
+              value={formData.maximumStay}
+              onChange={(e) => setFormData(prev => ({ ...prev, maximumStay: e.target.value }))}
+            />
+          </div>
+        </div>
       </div>
 
       <div className="form-actions">
@@ -401,10 +614,78 @@ function PropertyListing({ onSave, initialData = {} }) {
           type="button" 
           className="publish-btn"
           onClick={handlePublish}
-          disabled={isSubmitting || !formData.title || !formData.description || !formData.price || !formData.location.address}
+          disabled={isSubmitting}
         >
-          {isSubmitting ? 'Publishing...' : 'Publish Listing (+50 Points)'}
+          {isSubmitting ? 'Publishing...' : `Publish Listing (+${calculateHostPoints()} Points)`}
         </button>
+      </div>
+    </div>
+  );
+}
+
+// Points Display Component
+function PointsDisplay({ points, earnedPoints = 0, potentialPoints = 0 }) {
+  const levels = [
+    { min: 0, max: 100, name: 'Bronze', color: '#cd7f32' },
+    { min: 101, max: 500, name: 'Silver', color: '#c0c0c0' },
+    { min: 501, max: 1000, name: 'Gold', color: '#ffd700' },
+    { min: 1001, max: Infinity, name: 'Platinum', color: '#e5e4e2' }
+  ];
+
+  const currentLevel = levels.find(level => points >= level.min && points <= level.max);
+  const nextLevel = levels.find(level => points < level.max);
+  const progress = nextLevel ? ((points - currentLevel.min) / (nextLevel.max - currentLevel.min)) * 100 : 100;
+
+  return (
+    <div className="points-display">
+      <div className="points-card">
+        <div className="points-header">
+          <span className="points-icon">⭐</span>
+          <div className="points-info">
+            <h4>{points} Host Points</h4>
+            <p>Level: <span style={{ color: currentLevel.color }}>{currentLevel.name}</span></p>
+          </div>
+        </div>
+        
+        {earnedPoints > 0 && (
+          <div className="points-earned">
+            +{earnedPoints} points earned! 🎉
+          </div>
+        )}
+        
+        {potentialPoints > 0 && (
+          <div className="potential-points">
+            Potential points from this listing: <strong>+{potentialPoints}</strong>
+          </div>
+        )}
+        
+        <div className="level-progress">
+          <div className="progress-bar">
+            <div 
+              className="progress-fill" 
+              style={{ 
+                width: `${Math.min(progress, 100)}%`,
+                backgroundColor: currentLevel.color
+              }}
+            ></div>
+          </div>
+          <div className="progress-text">
+            {points} / {nextLevel ? nextLevel.max : 'Max'} points
+            {nextLevel && ` to ${nextLevel.name}`}
+          </div>
+        </div>
+        
+        <div className="points-breakdown">
+          <h5>How to earn more points:</h5>
+          <ul>
+            <li>✅ Complete listing details: +10 points</li>
+            <li>📸 Add 3+ photos: +20 points</li>
+            <li>🏠 List 5+ amenities: +15 points</li>
+            <li>📝 Write detailed description: +10 points</li>
+            <li>⭐ Get 5-star review: +50 points</li>
+            <li>📅 Complete booking: +25 points</li>
+          </ul>
+        </div>
       </div>
     </div>
   );

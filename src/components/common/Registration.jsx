@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification } from 'firebase/auth';
 import { auth } from '../../firebase/firebase';
 import GoogleLoginBtn from './GoogleLoginBtn';
+import EmailVerification from './EmailVerification';
 import '../../styles/authmodalstyle.css';
 
 function Registration({ onClose, switchToLogin }) {
@@ -16,9 +17,10 @@ function Registration({ onClose, switchToLogin }) {
     const [errors, setErrors] = useState({});
     const [passwordStrength, setPasswordStrength] = useState(0);
     const [isVisible, setIsVisible] = useState(false);
+    const [showVerification, setShowVerification] = useState(false); // Add this state
+    const [userPendingVerification, setUserPendingVerification] = useState(null); // Add this state
 
     useEffect(() => {
-        // Trigger entrance animation
         setTimeout(() => setIsVisible(true), 100);
     }, []);
 
@@ -51,7 +53,6 @@ function Registration({ onClose, switchToLogin }) {
             [field]: value
         }));
 
-        // Clear error when user starts typing
         if (errors[field]) {
             setErrors(prev => ({
                 ...prev,
@@ -59,7 +60,6 @@ function Registration({ onClose, switchToLogin }) {
             }));
         }
 
-        // Check password strength
         if (field === 'password') {
             setPasswordStrength(checkPasswordStrength(value));
         }
@@ -73,17 +73,27 @@ function Registration({ onClose, switchToLogin }) {
         setErrors({});
 
         try {
+            // Create user account
             const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
-            await updateProfile(userCredential.user, {
+            const user = userCredential.user;
+            
+            // Update profile with display name
+            await updateProfile(user, {
                 displayName: formData.fullName
             });
 
             // Send email verification
+            await sendEmailVerification(user);
+            
+            console.log("Verification email sent to:", user.email);
+            
+            // Show verification screen
+            setUserPendingVerification(user);
+            setShowVerification(true);
             
         } catch (error) {
             console.error("Registration error:", error);
             
-            // Shake animation for error
             document.querySelector('.auth-form')?.classList.add('shake');
             setTimeout(() => {
                 document.querySelector('.auth-form')?.classList.remove('shake');
@@ -96,6 +106,8 @@ function Registration({ onClose, switchToLogin }) {
                 errorMessage = "Password is too weak. Please choose a stronger password.";
             } else if (error.code === 'auth/invalid-email') {
                 errorMessage = "Please enter a valid email address.";
+            } else if (error.code === 'auth/operation-not-allowed') {
+                errorMessage = "Email/password accounts are not enabled. Please contact support.";
             }
             
             setErrors({ general: errorMessage });
@@ -104,8 +116,27 @@ function Registration({ onClose, switchToLogin }) {
         }
     };
 
+    const handleVerificationComplete = (verifiedUser) => {
+        console.log("Email verified successfully:", verifiedUser.email);
+        
+        // Add success animation
+        document.querySelector('.auth-content')?.classList.add('success');
+        
+        // Close modal after success
+        setTimeout(() => {
+            if (onClose) onClose();
+        }, 1000);
+    };
+
+    const handleBackToRegistration = () => {
+        setShowVerification(false);
+        setUserPendingVerification(null);
+    };
+
     const handleGoogleSuccess = (user) => {
         console.log("Google registration successful:", user);
+        
+        // For Google sign-in, email is already verified
         document.querySelector('.auth-content')?.classList.add('success');
         setTimeout(() => {
             if (onClose) onClose();
@@ -130,6 +161,19 @@ function Registration({ onClose, switchToLogin }) {
         if (passwordStrength <= 75) return '#10b981';
         return '#0ecfb8';
     };
+
+    // Show verification screen if needed
+    if (showVerification && userPendingVerification) {
+        return (
+            <div className={`auth-content ${isVisible ? 'visible' : ''}`}>
+                <EmailVerification 
+                    user={userPendingVerification}
+                    onVerificationComplete={handleVerificationComplete}
+                    onBack={handleBackToRegistration}
+                />
+            </div>
+        );
+    }
 
     return (
         <div className={`auth-content ${isVisible ? 'visible' : ''}`}>

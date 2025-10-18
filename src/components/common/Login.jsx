@@ -38,8 +38,13 @@ function Login({ onClose, switchToRegister }) {
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
 
             // Check if email is verified
+            // In the handleLogin function, after checking email verification:
             if (!userCredential.user.emailVerified) {
-                const resendVerification = window.confirm("Your email is not verified. Would you like us to resend the verification email?");
+                // Offer to resend verification email
+                const resendVerification = window.confirm(
+                    "Your email is not verified. Would you like us to resend the verification email?"
+                );
+                
                 if (resendVerification) {
                     try {
                         await sendEmailVerification(userCredential.user);
@@ -49,7 +54,10 @@ function Login({ onClose, switchToRegister }) {
                         alert("Failed to send verification email. Please try again later.");
                     }
                 }
-                setErrors({ general: "Please verify your email before logging in. Check your inbox for the verification link." });
+                
+                setErrors({ 
+                    general: "Please verify your email before logging in. Check your inbox for the verification link." 
+                });
                 setIsLoading(false);
                 return;
             }

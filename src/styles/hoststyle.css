@@ -7,13 +7,14 @@
 
 /* Airbnb-style Navigation Bar */
 .host-navbar {
-  background: white;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
   border-bottom: 1px solid #e2e8f0;
   padding: 0;
   position: sticky;
   top: 0;
   z-index: 1000;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(10px);
 }
 
 .nav-container {
@@ -23,7 +24,7 @@
   max-width: 1400px;
   margin: 0 auto;
   padding: 0 2rem;
-  height: 80px;
+  height: 85px;
 }
 
 /* Logo */
@@ -48,16 +49,20 @@
 .logo-text {
   font-size: 1.25rem;
   font-weight: 700;
-  color: #0ecfb8;
+  background: linear-gradient(135deg, #0ecfb8 0%, #06b6d4 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .logo-badge {
-  background: #0ecfb8;
+  background: linear-gradient(135deg, #0ecfb8 0%, #06b6d4 100%);
   color: white;
   padding: 0.2rem 0.5rem;
   border-radius: 12px;
   font-size: 0.7rem;
   font-weight: 600;
+  box-shadow: 0 2px 8px rgba(14, 207, 184, 0.3);
 }
 
 /* Navigation Tabs */
@@ -92,8 +97,9 @@
 }
 
 .nav-tab.active {
-  background: #0ecfb8;
+  background: linear-gradient(135deg, #0ecfb8 0%, #06b6d4 100%);
   color: white;
+  box-shadow: 0 4px 12px rgba(14, 207, 184, 0.3);
 }
 
 .tab-icon {
@@ -105,18 +111,30 @@
 }
 
 .nav-badge {
-  background: #ef4444;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
   color: white;
   border-radius: 50%;
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   font-size: 0.65rem;
   display: flex;
   align-items: center;
   justify-content: center;
   position: absolute;
-  top: -2px;
-  right: -2px;
+  top: -4px;
+  right: -4px;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+  animation: pulse-badge 2s ease-in-out infinite;
+}
+
+@keyframes pulse-badge {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
 }
 
 /* User Menu Section */
@@ -144,7 +162,12 @@
 .switch-mode-btn:hover {
   background: #f1f5f9;
   border-color: #cbd5e1;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  transform: translateY(-1px);
+}
+
+.switch-mode-btn:active {
+  transform: translateY(0);
 }
 
 .switch-icon {
@@ -173,7 +196,12 @@
 }
 
 .user-menu-trigger:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  transform: translateY(-1px);
+}
+
+.user-menu-trigger:active {
+  transform: translateY(0);
 }
 
 .user-avatar {
@@ -220,10 +248,22 @@
   border: 1px solid #e2e8f0;
   border-radius: 12px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-  min-width: 240px;
+  min-width: 260px;
   margin-top: 0.5rem;
   z-index: 1000;
   overflow: hidden;
+  animation: dropdown-appear 0.2s ease-out;
+}
+
+@keyframes dropdown-appear {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .dropdown-section {
@@ -292,6 +332,206 @@
 .item-text {
   flex: 1;
   text-align: left;
+}
+
+/* Host Points Display */
+.host-points-display {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border: 1px solid #fbbf24;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #92400e;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.host-points-display:hover {
+  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
+  transform: translateY(-1px);
+}
+
+.points-icon {
+  font-size: 1rem;
+}
+
+.points-value {
+  font-weight: 700;
+}
+
+/* Notifications Dropdown */
+.notifications-container {
+  position: relative;
+}
+
+.notifications-trigger {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  background: white;
+  color: #374151;
+  border: 1px solid #e2e8f0;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 1.2rem;
+}
+
+.notifications-trigger:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  transform: translateY(-1px);
+}
+
+.notifications-trigger:active {
+  transform: translateY(0);
+}
+
+.notifications-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  min-width: 320px;
+  max-width: 400px;
+  margin-top: 0.5rem;
+  z-index: 1000;
+  overflow: hidden;
+  animation: dropdown-appear 0.2s ease-out;
+}
+
+.notifications-header {
+  padding: 1rem;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.notifications-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.mark-all-read {
+  background: none;
+  border: none;
+  color: #0ecfb8;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.mark-all-read:hover {
+  background: #f0fdfa;
+}
+
+.notifications-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.notification-item {
+  padding: 1rem;
+  border-bottom: 1px solid #f1f5f9;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  gap: 0.75rem;
+}
+
+.notification-item:hover {
+  background: #f8fafc;
+}
+
+.notification-item.unread {
+  background: #f0fdfa;
+}
+
+.notification-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.notification-content {
+  flex: 1;
+}
+
+.notification-title {
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 0.25rem;
+  font-size: 0.9rem;
+}
+
+.notification-message {
+  color: #64748b;
+  font-size: 0.85rem;
+  margin-bottom: 0.25rem;
+}
+
+.notification-time {
+  color: #94a3b8;
+  font-size: 0.75rem;
+}
+
+.notification-dot {
+  width: 8px;
+  height: 8px;
+  background: #0ecfb8;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 0.5rem;
+}
+
+.notifications-empty {
+  padding: 2rem;
+  text-align: center;
+  color: #94a3b8;
+}
+
+.notifications-empty-icon {
+  font-size: 3rem;
+  margin-bottom: 0.5rem;
+}
+
+.notifications-footer {
+  padding: 0.75rem;
+  border-top: 1px solid #f1f5f9;
+  text-align: center;
+}
+
+.view-all-notifications {
+  background: none;
+  border: none;
+  color: #0ecfb8;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.view-all-notifications:hover {
+  background: #f0fdfa;
 }
 
 /* Main Content */

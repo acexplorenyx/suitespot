@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db, auth } from '../firebase/firebase';
@@ -17,6 +17,9 @@ function HostDashboard() {
   const [messages, setMessages] = useState([]);
   const [userProfile, setUserProfile] = useState(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const userMenuRef = useRef(null);
+  const notificationsRef = useRef(null);
   
   const [stats, setStats] = useState({
     totalListings: 0,
@@ -31,6 +34,30 @@ function HostDashboard() {
   });
 
   const navigate = useNavigate();
+
+  // Close user menu and notifications on outside click and on ESC
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+        setShowUserMenu(false);
+      }
+      if (notificationsRef.current && !notificationsRef.current.contains(event.target)) {
+        setShowNotifications(false);
+      }
+    };
+    const handleEsc = (event) => {
+      if (event.key === 'Escape') {
+        setShowUserMenu(false);
+        setShowNotifications(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEsc);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEsc);
+    };
+  }, []);
 
   // Switch to guest mode
   const switchToGuestMode = () => {
@@ -182,9 +209,52 @@ function HostDashboard() {
   // Calculate unread messages count
   const unreadMessagesCount = messages.filter(msg => !msg.isRead).length;
 
+  // Mock notifications data (replace with real data from Firestore)
+  const notifications = [
+    {
+      id: 1,
+      icon: '📅',
+      title: 'New Booking',
+      message: 'John Doe booked your property for 3 nights',
+      time: '5 minutes ago',
+      unread: true
+    },
+    {
+      id: 2,
+      icon: '💬',
+      title: 'New Message',
+      message: 'Sarah asked about check-in time',
+      time: '1 hour ago',
+      unread: true
+    },
+    {
+      id: 3,
+      icon: '⭐',
+      title: 'New Review',
+      message: 'You received a 5-star review!',
+      time: '2 hours ago',
+      unread: false
+    },
+    {
+      id: 4,
+      icon: '💰',
+      title: 'Payment Received',
+      message: '$450 has been deposited to your account',
+      time: '1 day ago',
+      unread: false
+    }
+  ];
+
+  const unreadNotificationsCount = notifications.filter(n => n.unread).length;
+
+  const handleMarkAllRead = () => {
+    // Implement mark all as read logic
+    console.log('Mark all notifications as read');
+  };
+
   return (
     <div className="host-dashboard">
-      {/* Airbnb-style Navigation Bar */}
+      {/* Enhanced Navigation Bar */}
       <nav className="host-navbar">
         <div className="nav-container">
           {/* Logo */}
@@ -207,29 +277,97 @@ function HostDashboard() {
                 key={tab.key}
                 className={`nav-tab ${activeTab === tab.key ? 'active' : ''}`}
                 onClick={() => setActiveTab(tab.key)}
+                title={tab.label}
+                aria-label={tab.label}
               >
                 <span className="tab-icon">{tab.icon}</span>
                 <span className="tab-label">{tab.label}</span>
-                {tab.badge > 0 && <span className="nav-badge">{tab.badge}</span>}
+                {tab.badge > 0 && <span className="nav-badge">{tab.badge > 9 ? '9+' : tab.badge}</span>}
               </button>
             ))}
           </div>
 
           {/* User Menu */}
           <div className="nav-user-menu">
-            <button 
-              className="switch-mode-btn"
-              onClick={switchToGuestMode}
-              title="Switch to Guest Mode"
-            >
-              <span className="switch-icon">👤</span>
-              <span className="switch-text">Switch to Guest</span>
-            </button>
+            {/* Notifications Dropdown */}
+            <div className="notifications-container" ref={notificationsRef}>
+              <button 
+                className="notifications-trigger"
+                onClick={() => setShowNotifications(!showNotifications)}
+                title="Notifications"
+                aria-label="Notifications"
+                aria-haspopup="menu"
+                aria-expanded={showNotifications}
+              >
+                <span className="switch-icon">🔔</span>
+                {unreadNotificationsCount > 0 && (
+                  <span className="nav-badge" style={{ position: 'absolute', top: '-6px', right: '-6px' }}>
+                    {unreadNotificationsCount > 9 ? '9+' : unreadNotificationsCount}
+                  </span>
+                )}
+              </button>
 
-            <div className="user-menu-container">
+              {showNotifications && (
+                <div className="notifications-dropdown" role="menu">
+                  <div className="notifications-header">
+                    <h3>Notifications</h3>
+                    {unreadNotificationsCount > 0 && (
+                      <button className="mark-all-read" onClick={handleMarkAllRead}>
+                        Mark all as read
+                      </button>
+                    )}
+                  </div>
+                  
+                  <div className="notifications-list">
+                    {notifications.length > 0 ? (
+                      notifications.map(notification => (
+                        <div 
+                          key={notification.id}
+                          className={`notification-item ${notification.unread ? 'unread' : ''}`}
+                          onClick={() => {
+                            // Handle notification click
+                            setShowNotifications(false);
+                          }}
+                        >
+                          <span className="notification-icon">{notification.icon}</span>
+                          <div className="notification-content">
+                            <div className="notification-title">{notification.title}</div>
+                            <div className="notification-message">{notification.message}</div>
+                            <div className="notification-time">{notification.time}</div>
+                          </div>
+                          {notification.unread && <div className="notification-dot"></div>}
+                        </div>
+                      ))
+                    ) : (
+                      <div className="notifications-empty">
+                        <div className="notifications-empty-icon">🔔</div>
+                        <p>No notifications yet</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="notifications-footer">
+                    <button 
+                      className="view-all-notifications"
+                      onClick={() => {
+                        setShowNotifications(false);
+                        setActiveTab('messages');
+                      }}
+                    >
+                      View all notifications
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="user-menu-container" ref={userMenuRef}>
               <button 
                 className="user-menu-trigger"
                 onClick={() => setShowUserMenu(!showUserMenu)}
+                aria-haspopup="menu"
+                aria-expanded={showUserMenu}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowUserMenu((s) => !s); } }}
               >
                 <div className="user-avatar">
                   <img 
@@ -242,7 +380,7 @@ function HostDashboard() {
               </button>
 
               {showUserMenu && (
-                <div className="user-dropdown">
+                <div className="user-dropdown" role="menu" aria-label="User menu">
                   <div className="dropdown-section">
                     <div className="user-info">
                       <div className="user-avatar large">
@@ -259,20 +397,36 @@ function HostDashboard() {
                   </div>
 
                   <div className="dropdown-section">
-                    <button className="dropdown-item">
+                    <button className="dropdown-item" onClick={() => setActiveTab('settings')}>
                       <span className="item-icon">👤</span>
                       <span className="item-text">Profile</span>
                     </button>
-                    <button className="dropdown-item">
+                    <button className="dropdown-item" onClick={() => setActiveTab('settings')}>
                       <span className="item-icon">⚙️</span>
                       <span className="item-text">Account Settings</span>
                     </button>
                     <button 
                       className="dropdown-item"
-                      onClick={() => setActiveTab('settings')}
+                      onClick={() => {
+                        setShowUserMenu(false);
+                        setActiveTab('earnings');
+                      }}
                     >
-                      <span className="item-icon">🏠</span>
-                      <span className="item-text">Host Preferences</span>
+                      <span className="item-icon">⭐</span>
+                      <span className="item-text">Points & Rewards ({stats.hostPoints})</span>
+                    </button>
+                  </div>
+
+                  <div className="dropdown-section">
+                    <button 
+                      className="dropdown-item"
+                      onClick={() => {
+                        setShowUserMenu(false);
+                        switchToGuestMode();
+                      }}
+                    >
+                      <span className="item-icon">👤</span>
+                      <span className="item-text">Switch to Guest Mode</span>
                     </button>
                   </div>
 
@@ -280,10 +434,6 @@ function HostDashboard() {
                     <button className="dropdown-item">
                       <span className="item-icon">🔧</span>
                       <span className="item-text">Help & Support</span>
-                    </button>
-                    <button className="dropdown-item">
-                      <span className="item-icon">📱</span>
-                      <span className="item-text">Download App</span>
                     </button>
                   </div>
 
