@@ -25,12 +25,36 @@ function EmailVerification({ user, onVerificationComplete, onBack }) {
         try {
             setIsLoading(true);
             setError('');
+            
+            // Check if user object is valid
+            if (!user || !user.email) {
+                setError('User information is missing. Please try registering again.');
+                return;
+            }
+
+            console.log('Sending verification email to:', user.email);
+            
             await sendEmailVerification(user);
+            
+            console.log('Verification email sent successfully');
             setEmailSent(true);
             setCountdown(30);
+            
         } catch (error) {
-            setError('Failed to send verification email. Please try again.');
             console.error('Error sending verification email:', error);
+            
+            let errorMessage = 'Failed to send verification email. Please try again.';
+            
+            // Handle specific Firebase errors
+            if (error.code === 'auth/too-many-requests') {
+                errorMessage = 'Too many attempts. Please try again later.';
+            } else if (error.code === 'auth/user-not-found') {
+                errorMessage = 'User account not found. Please try registering again.';
+            } else if (error.code === 'auth/invalid-email') {
+                errorMessage = 'Invalid email address. Please check your email.';
+            }
+            
+            setError(errorMessage);
         } finally {
             setIsLoading(false);
         }
@@ -45,8 +69,11 @@ function EmailVerification({ user, onVerificationComplete, onBack }) {
         setIsLoading(true);
         setError('');
         try {
+            // Reload user to get latest email verification status
             await user.reload();
             const currentUser = user.auth.currentUser;
+            
+            console.log('Email verification status:', currentUser.emailVerified);
             
             if (currentUser.emailVerified) {
                 onVerificationComplete(currentUser);
@@ -54,12 +81,21 @@ function EmailVerification({ user, onVerificationComplete, onBack }) {
                 setError('Email not verified yet. Please check your inbox and click the verification link.');
             }
         } catch (error) {
-            setError('Failed to check verification status. Please try again.');
             console.error('Verification check error:', error);
+            setError('Failed to check verification status. Please try again.');
         } finally {
             setIsLoading(false);
         }
     };
+
+    // Debug info
+    console.log('EmailVerification component state:', {
+        user: user?.email,
+        isLoading,
+        error,
+        emailSent,
+        countdown
+    });
 
     return (
         <div className="verification-container">
@@ -91,7 +127,7 @@ function EmailVerification({ user, onVerificationComplete, onBack }) {
                     <button 
                         onClick={handleManualCheck}
                         disabled={isLoading}
-                        className="auth-submit-btn"
+                        className={`auth-submit-btn ${isLoading ? 'loading' : ''}`}
                     >
                         {isLoading ? (
                             <>
@@ -130,6 +166,16 @@ function EmailVerification({ user, onVerificationComplete, onBack }) {
                     <div className="error-banner animated-error">
                         <span className="error-icon">⚠️</span>
                         {error}
+                    </div>
+                )}
+
+                {/* Debug info for development */}
+                {process.env.NODE_ENV === 'development' && (
+                    <div style={{ marginTop: '20px', padding: '10px', background: '#f5f5f5', borderRadius: '5px', fontSize: '12px' }}>
+                        <strong>Debug Info:</strong>
+                        <div>User: {user?.email}</div>
+                        <div>User ID: {user?.uid}</div>
+                        <div>Email Sent: {emailSent ? 'Yes' : 'No'}</div>
                     </div>
                 )}
             </div>
