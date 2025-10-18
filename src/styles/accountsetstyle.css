@@ -1,0 +1,806 @@
+/* Account Settings Styles */
+.account-settings {
+  padding: 1rem 0;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.settings-header {
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.settings-header h2 {
+  margin: 0;
+  color: #1e293b;
+  font-size: 2rem;
+}
+
+.settings-header p {
+  margin: 0.5rem 0 0 0;
+  color: #64748b;
+}
+
+/* Settings Tabs */
+.settings-tabs {
+  display: flex;
+  gap: 0;
+  background: white;
+  margin-bottom: 2rem;
+  border-radius: 15px;
+  padding: 0.5rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  flex-wrap: wrap;
+}
+
+.settings-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem;
+  border: none;
+  background: transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 500;
+  color: #64748b;
+  flex: 1;
+  min-width: 140px;
+  justify-content: center;
+}
+
+.settings-tab:hover {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.settings-tab.active {
+  background: #3b82f6;
+  color: white;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.tab-icon {
+  font-size: 1.2rem;
+}
+
+/* Settings Content */
+.settings-content {
+  background: white;
+  border-radius: 15px;
+  padding: 2rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+/* Section Header */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.section-header h3 {
+  margin: 0;
+  color: #1e293b;
+  font-size: 1.5rem;
+}
+
+.edit-btn {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.edit-btn:hover {
+  background: #2563eb;
+  transform: translateY(-2px);
+}
+
+/* Form Grid */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+.input-group.full-width {
+  grid-column: 1 / -1;
+}
+
+.input-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+.input-group input,
+.input-group textarea,
+.input-group select {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  background: white;
+}
+
+.input-group input:focus,
+.input-group textarea:focus,
+.input-group select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.input-group input:disabled,
+.input-group textarea:disabled,
+.input-group select:disabled {
+  background: #f8fafc;
+  color: #64748b;
+  cursor: not-allowed;
+}
+
+.input-group textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+/* Languages Grid */
+.languages-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.language-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.language-option:hover {
+  border-color: #3b82f6;
+  background: #f8fafc;
+}
+
+.language-option input {
+  display: none;
+}
+
+.language-option input:checked + .checkmark {
+  background: #3b82f6;
+  border-color: #3b82f6;
+}
+
+.language-option input:checked + .checkmark::after {
+  content: '✓';
+  color: white;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 0.8rem;
+}
+
+/* Form Actions */
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.save-btn {
+  background: #10b981;
+  color: white;
+  border: none;
+  padding: 1rem 2rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.save-btn:hover:not(:disabled) {
+  background: #059669;
+  transform: translateY(-2px);
+}
+
+.save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Security Form */
+.security-form {
+  max-width: 400px;
+  margin-bottom: 2rem;
+}
+
+.change-password-btn {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 1rem 2rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.change-password-btn:hover:not(:disabled) {
+  background: #2563eb;
+  transform: translateY(-2px);
+}
+
+.change-password-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Security Features */
+.security-features {
+  border-top: 1px solid #e2e8f0;
+  padding-top: 2rem;
+}
+
+.security-features h4 {
+  margin: 0 0 1rem 0;
+  color: #1e293b;
+}
+
+.feature-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.feature-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.feature-item:hover {
+  border-color: #3b82f6;
+  background: #f8fafc;
+}
+
+.feature-icon {
+  font-size: 1.5rem;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f1f5f9;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.feature-info {
+  flex: 1;
+}
+
+.feature-info strong {
+  display: block;
+  color: #1e293b;
+  margin-bottom: 0.25rem;
+}
+
+.feature-info p {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.feature-status {
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+}
+
+.feature-status.verified {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.enable-btn,
+.view-btn {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.enable-btn:hover,
+.view-btn:hover {
+  background: #2563eb;
+}
+
+/* Booking Preferences */
+.booking-preferences {
+  margin-bottom: 2rem;
+}
+
+.booking-preferences h4 {
+  margin: 0 0 1rem 0;
+  color: #1e293b;
+}
+
+.preference-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.preference-option {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.preference-option:hover {
+  border-color: #3b82f6;
+  background: #f8fafc;
+}
+
+.preference-option input {
+  display: none;
+}
+
+.preference-option input:checked + .checkmark {
+  background: #3b82f6;
+  border-color: #3b82f6;
+}
+
+.preference-option input:checked + .checkmark::after {
+  content: '✓';
+  color: white;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 0.8rem;
+}
+
+/* Recent Bookings */
+.recent-bookings h4 {
+  margin: 0 0 1rem 0;
+  color: #1e293b;
+}
+
+.bookings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.booking-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.booking-item:hover {
+  border-color: #3b82f6;
+  background: #f8fafc;
+}
+
+.booking-info {
+  flex: 1;
+}
+
+.booking-info strong {
+  display: block;
+  color: #1e293b;
+  margin-bottom: 0.25rem;
+}
+
+.booking-info span {
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.booking-info small {
+  color: #94a3b8;
+  font-size: 0.8rem;
+}
+
+.booking-status .status {
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.status.confirmed {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.status.pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+/* Coupon Management */
+.create-coupon {
+  margin-bottom: 2rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.create-coupon h4 {
+  margin: 0 0 1rem 0;
+  color: #1e293b;
+}
+
+.coupon-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.create-coupon-btn {
+  grid-column: 1 / -1;
+  background: #10b981;
+  color: white;
+  border: none;
+  padding: 1rem 2rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.create-coupon-btn:hover:not(:disabled) {
+  background: #059669;
+  transform: translateY(-2px);
+}
+
+.create-coupon-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Existing Coupons */
+.existing-coupons h4 {
+  margin: 0 0 1rem 0;
+  color: #1e293b;
+}
+
+.coupons-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.coupon-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  transition: all 0.3s ease;
+}
+
+.coupon-item:hover {
+  border-color: #3b82f6;
+  background: #f8fafc;
+}
+
+.coupon-info {
+  flex: 1;
+}
+
+.coupon-code {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #3b82f6;
+  margin-bottom: 0.5rem;
+}
+
+.coupon-details {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.coupon-details span {
+  background: #f1f5f9;
+  padding: 0.25rem 0.75rem;
+  border-radius: 15px;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.discount {
+  background: #d1fae5 !important;
+  color: #065f46 !important;
+}
+
+.coupon-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.status-btn,
+.delete-btn {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.status-btn.activate {
+  background: #10b981;
+  color: white;
+}
+
+.status-btn.deactivate {
+  background: #f59e0b;
+  color: white;
+}
+
+.delete-btn {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.status-btn:hover,
+.delete-btn:hover {
+  transform: translateY(-1px);
+}
+
+/* Preferences Sections */
+.preference-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.preference-section {
+  padding-bottom: 2rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.preference-section:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.preference-section h4 {
+  margin: 0 0 1rem 0;
+  color: #1e293b;
+}
+
+.notification-options,
+.privacy-options,
+.payment-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.notification-option,
+.privacy-option,
+.payment-option {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.notification-option:hover,
+.privacy-option:hover,
+.payment-option:hover {
+  border-color: #3b82f6;
+  background: #f8fafc;
+}
+
+.notification-option input,
+.privacy-option input,
+.payment-option input {
+  display: none;
+}
+
+.notification-option input:checked + .checkmark,
+.privacy-option input:checked + .checkmark,
+.payment-option input:checked + .checkmark {
+  background: #3b82f6;
+  border-color: #3b82f6;
+}
+
+.notification-option input:checked + .checkmark::after,
+.privacy-option input:checked + .checkmark::after,
+.payment-option input:checked + .checkmark::after {
+  content: '✓';
+  color: white;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 0.8rem;
+}
+
+/* Preferences Actions */
+.preferences-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.save-preferences-btn,
+.export-data-btn {
+  padding: 1rem 2rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.save-preferences-btn {
+  background: #10b981;
+  color: white;
+}
+
+.save-preferences-btn:hover {
+  background: #059669;
+  transform: translateY(-2px);
+}
+
+.export-data-btn {
+  background: #3b82f6;
+  color: white;
+}
+
+.export-data-btn:hover {
+  background: #2563eb;
+  transform: translateY(-2px);
+}
+
+/* Empty States */
+.empty-bookings,
+.empty-coupons {
+  text-align: center;
+  padding: 2rem;
+  color: #64748b;
+}
+
+.empty-bookings p,
+.empty-coupons p {
+  margin: 0;
+}
+
+/* Checkmark (Reusable) */
+.checkmark {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #cbd5e1;
+  border-radius: 4px;
+  position: relative;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .settings-tabs {
+    flex-direction: column;
+  }
+  
+  .settings-tab {
+    min-width: auto;
+  }
+  
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .security-form {
+    max-width: none;
+  }
+  
+  .feature-item {
+    flex-direction: column;
+    text-align: center;
+    gap: 0.75rem;
+  }
+  
+  .coupon-item {
+    flex-direction: column;
+    gap: 1rem;
+    text-align: center;
+  }
+  
+  .coupon-details {
+    justify-content: center;
+  }
+  
+  .coupon-actions {
+    justify-content: center;
+  }
+  
+  .preferences-actions {
+    flex-direction: column;
+  }
+  
+  .languages-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  
+  .coupon-form {
+    grid-template-columns: 1fr;
+  }
+}
