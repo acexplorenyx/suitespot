@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification } from 'firebase/auth';
 import { auth } from '../../firebase/firebase';
 import GoogleLoginBtn from './GoogleLoginBtn';
-import EmailVerification from './EmailVerification';
 import '../../styles/authmodalstyle.css';
 
 function Registration({ onClose, switchToLogin }) {
@@ -17,10 +16,9 @@ function Registration({ onClose, switchToLogin }) {
     const [errors, setErrors] = useState({});
     const [passwordStrength, setPasswordStrength] = useState(0);
     const [isVisible, setIsVisible] = useState(false);
-    const [userPendingVerification, setUserPendingVerification] = useState(null);
-    const [registrationStep, setRegistrationStep] = useState('form');
 
     useEffect(() => {
+        // Trigger entrance animation
         setTimeout(() => setIsVisible(true), 100);
     }, []);
 
@@ -53,6 +51,7 @@ function Registration({ onClose, switchToLogin }) {
             [field]: value
         }));
 
+        // Clear error when user starts typing
         if (errors[field]) {
             setErrors(prev => ({
                 ...prev,
@@ -60,6 +59,7 @@ function Registration({ onClose, switchToLogin }) {
             }));
         }
 
+        // Check password strength
         if (field === 'password') {
             setPasswordStrength(checkPasswordStrength(value));
         }
@@ -74,22 +74,16 @@ function Registration({ onClose, switchToLogin }) {
 
         try {
             const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
-            const user = userCredential.user;
-            
-            await updateProfile(user, {
+            await updateProfile(userCredential.user, {
                 displayName: formData.fullName
             });
 
             // Send email verification
-            await sendEmailVerification(user);
-
-            console.log("Registration successful, verification email sent:", user);
-            setUserPendingVerification(user);
-            setRegistrationStep('verification');
             
         } catch (error) {
             console.error("Registration error:", error);
             
+            // Shake animation for error
             document.querySelector('.auth-form')?.classList.add('shake');
             setTimeout(() => {
                 document.querySelector('.auth-form')?.classList.remove('shake');
@@ -108,19 +102,6 @@ function Registration({ onClose, switchToLogin }) {
         } finally {
             setIsLoading(false);
         }
-    };
-
-    const handleVerificationComplete = (verifiedUser) => {
-        console.log("Email verified successfully:", verifiedUser);
-        document.querySelector('.auth-content')?.classList.add('success');
-        setTimeout(() => {
-            if (onClose) onClose();
-        }, 800);
-    };
-
-    const handleBackToForm = () => {
-        setRegistrationStep('form');
-        setUserPendingVerification(null);
     };
 
     const handleGoogleSuccess = (user) => {
@@ -150,22 +131,9 @@ function Registration({ onClose, switchToLogin }) {
         return '#0ecfb8';
     };
 
-    // Show verification screen if needed
-    if (registrationStep === 'verification' && userPendingVerification) {
-        return (
-            <div className={`auth-content ${isVisible ? 'visible' : ''}`}>
-                <EmailVerification 
-                    user={userPendingVerification}
-                    onVerificationComplete={handleVerificationComplete}
-                    onBack={handleBackToForm}
-                />
-            </div>
-        );
-    }
-
-    // Original registration form
     return (
         <div className={`auth-content ${isVisible ? 'visible' : ''}`}>
+            {/* Enhanced Google Sign Up */}
             <div className="social-login-section">
                 <GoogleLoginBtn 
                     onSuccess={handleGoogleSuccess}
@@ -179,6 +147,7 @@ function Registration({ onClose, switchToLogin }) {
                 <span className="divider-text">or continue with email</span>
             </div>
 
+            {/* Enhanced Registration Form */}
             <form onSubmit={handleRegister} className="auth-form animated-form">
                 <div className={`input-group ${formData.fullName ? 'has-value' : ''}`}>
                     <label htmlFor="fullName" className="floating-label">Full name</label>

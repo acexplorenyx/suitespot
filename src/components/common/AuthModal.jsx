@@ -128,7 +128,6 @@ function AuthModal({ onClose, initialView = 'login' }) {
               onClick={() => handleSwitchView('register')}
               disabled={isAnimating}
             >
-              <span className="tab-icon">✨</span>
               <span className="tab-label">Sign Up</span>
               {!isLogin && <div className="active-indicator"></div>}
             </button>
