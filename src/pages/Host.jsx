@@ -8,6 +8,7 @@ import CalendarManager from '../components/host/CalendarManager';
 import MessagesManager from '../components/host/MessagesManager';
 import EarningsDashboard from '../components/host/EarningsDashboard';
 import AccountSettings from '../components/host/AccountSettings';
+import HelpSupport from '../components/host/HelpSupport';
 import '../styles/hoststyle.css';
 
 function HostDashboard() {
@@ -201,6 +202,8 @@ function HostDashboard() {
         return <EarningsDashboard stats={stats} bookings={bookings} />;
       case 'settings':
         return <AccountSettings user={userProfile} />;
+      case 'help':
+        return <HelpSupport />;
       default:
         return <HostOverview stats={stats} bookings={bookings} listings={listings} />;
     }
@@ -258,7 +261,7 @@ function HostDashboard() {
       <nav className="host-navbar">
         <div className="nav-container">
           {/* Logo */}
-          <div className="nav-logo" onClick={() => navigate('/')}>
+          <div className="nav-logo" onClick={() => navigate('/host')}>
             <span className="logo-icon">🏠</span>
             <span className="logo-text">SuiteSpot</span>
             <span className="logo-badge">Host</span>
@@ -381,13 +384,23 @@ function HostDashboard() {
 
               {showUserMenu && (
                 <div className="user-dropdown" role="menu" aria-label="User menu">
-                  <div className="dropdown-section">
+                  {/* User Info Section */}
+                  <div className="dropdown-section user-info-section">
                     <div className="user-info">
                       <div className="user-avatar large">
-                        <img 
-                          src={userProfile?.photoURL || '/api/placeholder/64/64'} 
-                          alt={userProfile?.displayName || 'User'} 
-                        />
+                        {userProfile?.photoURL ? (
+                          <img 
+                            src={userProfile.photoURL} 
+                            alt={userProfile?.displayName || 'User'} 
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              e.target.nextSibling.style.display = 'flex';
+                            }}
+                          />
+                        ) : null}
+                        <div className="avatar-fallback" style={{ display: userProfile?.photoURL ? 'none' : 'flex' }}>
+                          {userProfile?.displayName?.charAt(0) || 'U'}
+                        </div>
                       </div>
                       <div className="user-details">
                         <div className="user-name">{userProfile?.displayName || 'User'}</div>
@@ -396,13 +409,26 @@ function HostDashboard() {
                     </div>
                   </div>
 
+                  {/* Menu Items */}
                   <div className="dropdown-section">
-                    <button className="dropdown-item" onClick={() => setActiveTab('settings')}>
-                      <span className="item-icon">👤</span>
+                    <button 
+                      className="dropdown-item" 
+                      onClick={() => {
+                        setShowUserMenu(false);
+                        setActiveTab('settings');
+                      }}
+                    >
+                      <span className="item-icon profile-icon">👤</span>
                       <span className="item-text">Profile</span>
                     </button>
-                    <button className="dropdown-item" onClick={() => setActiveTab('settings')}>
-                      <span className="item-icon">⚙️</span>
+                    <button 
+                      className="dropdown-item" 
+                      onClick={() => {
+                        setShowUserMenu(false);
+                        setActiveTab('settings');
+                      }}
+                    >
+                      <span className="item-icon settings-icon">⚙️</span>
                       <span className="item-text">Account Settings</span>
                     </button>
                     <button 
@@ -412,11 +438,15 @@ function HostDashboard() {
                         setActiveTab('earnings');
                       }}
                     >
-                      <span className="item-icon">⭐</span>
-                      <span className="item-text">Points & Rewards ({stats.hostPoints})</span>
+                      <span className="item-icon rewards-icon">⭐</span>
+                      <span className="item-text">Points & Rewards ({stats.hostPoints || 0})</span>
                     </button>
                   </div>
 
+                  {/* Divider */}
+                  <div className="dropdown-divider"></div>
+
+                  {/* Switch Mode */}
                   <div className="dropdown-section">
                     <button 
                       className="dropdown-item"
@@ -425,21 +455,32 @@ function HostDashboard() {
                         switchToGuestMode();
                       }}
                     >
-                      <span className="item-icon">👤</span>
+                      <span className="item-icon guest-icon">👤</span>
                       <span className="item-text">Switch to Guest Mode</span>
                     </button>
                   </div>
 
+                  {/* Divider */}
+                  <div className="dropdown-divider"></div>
+
+                  {/* Help & Support */}
                   <div className="dropdown-section">
-                    <button className="dropdown-item">
-                      <span className="item-icon">🔧</span>
+                    <button 
+                      className="dropdown-item"
+                      onClick={() => {
+                        setShowUserMenu(false);
+                        setActiveTab('help');
+                      }}
+                    >
+                      <span className="item-icon help-icon">🔧</span>
                       <span className="item-text">Help & Support</span>
                     </button>
                   </div>
 
+                  {/* Logout */}
                   <div className="dropdown-section">
                     <button className="dropdown-item logout" onClick={handleLogout}>
-                      <span className="item-icon">🚪</span>
+                      <span className="item-icon logout-icon">🚪</span>
                       <span className="item-text">Log out</span>
                     </button>
                   </div>

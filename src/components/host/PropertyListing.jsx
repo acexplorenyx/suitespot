@@ -3,41 +3,61 @@ import { collection, addDoc, updateDoc, doc, increment } from 'firebase/firestor
 import { db, auth } from '../../firebase/firebase';
 import '../../styles/propertylistingstyle.css';
 
-function PropertyListing({ onSave, initialData = {} }) {
+function PropertyListing({ onSave, initialData = null }) {
   const [formData, setFormData] = useState({
-    title: initialData.title || '',
-    category: initialData.category || 'home',
-    type: initialData.type || 'entire-place',
-    description: initialData.description || '',
-    price: initialData.price || '',
-    discount: initialData.discount || 0,
-    promoCode: initialData.promoCode || '',
-    location: initialData.location || { address: '', city: '', country: '', coordinates: { lat: 0, lng: 0 } },
-    amenities: initialData.amenities || [],
-    images: initialData.images || [],
-    maxGuests: initialData.maxGuests || 1,
-    bedrooms: initialData.bedrooms || 1,
-    beds: initialData.beds || 1,
-    bathrooms: initialData.bathrooms || 1,
-    status: initialData.status || 'draft',
-    hostPoints: initialData.hostPoints || 0,
-    isFeatured: initialData.isFeatured || false,
-    cancellationPolicy: initialData.cancellationPolicy || 'flexible',
-    houseRules: initialData.houseRules || [],
-    checkInTime: initialData.checkInTime || '15:00',
-    checkOutTime: initialData.checkOutTime || '11:00',
-    minimumStay: initialData.minimumStay || 1,
-    maximumStay: initialData.maximumStay || 30
+    title: initialData?.title || '',
+    category: initialData?.category || 'home',
+    type: initialData?.type || 'entire-place',
+    description: initialData?.description || '',
+    price: initialData?.price || '',
+    discount: initialData?.discount || 0,
+    promoCode: initialData?.promoCode || '',
+    location: initialData?.location || { address: '', city: '', country: '', coordinates: { lat: 0, lng: 0 } },
+    amenities: initialData?.amenities || [],
+    images: initialData?.images || [],
+    maxGuests: initialData?.maxGuests || 1,
+    bedrooms: initialData?.bedrooms || 1,
+    beds: initialData?.beds || 1,
+    bathrooms: initialData?.bathrooms || 1,
+    status: initialData?.status || 'draft',
+    hostPoints: initialData?.hostPoints || 0,
+    isFeatured: initialData?.isFeatured || false,
+    cancellationPolicy: initialData?.cancellationPolicy || 'flexible',
+    houseRules: initialData?.houseRules || [],
+    checkInTime: initialData?.checkInTime || '15:00',
+    checkOutTime: initialData?.checkOutTime || '11:00',
+    minimumStay: initialData?.minimumStay || 1,
+    maximumStay: initialData?.maximumStay || 30,
+    // Experience fields
+    experienceType: initialData?.experienceType || '',
+    duration: initialData?.duration || 2,
+    durationUnit: initialData?.durationUnit || 'hours',
+    groupSize: initialData?.groupSize || 10,
+    meetingPoint: initialData?.meetingPoint || '',
+    includedItems: initialData?.includedItems || [],
+    requirements: initialData?.requirements || [],
+    skillLevel: initialData?.skillLevel || 'beginner'
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [imageUrls, setImageUrls] = useState(initialData.images || []);
+  const [imageUrls, setImageUrls] = useState(initialData?.images || []);
   const [earnedPoints, setEarnedPoints] = useState(0);
 
   const categories = [
     { value: 'home', label: 'Home/Apartment', icon: '🏠' },
     { value: 'experience', label: 'Experience', icon: '🎪' },
     { value: 'service', label: 'Service', icon: '🔧' }
+  ];
+
+  const experienceTypes = [
+    { value: 'art-design', label: 'Art and Design', icon: '🎨', description: 'Creative workshops, gallery tours, craft classes' },
+    { value: 'fitness-wellness', label: 'Fitness and Wellness', icon: '🧘‍♀️', description: 'Yoga sessions, meditation, fitness classes' },
+    { value: 'food-drink', label: 'Food and Drink', icon: '🍷', description: 'Cooking classes, wine tasting, food tours' },
+    { value: 'history-culture', label: 'History and Culture', icon: '🏛️', description: 'Historical tours, cultural experiences, museum visits' },
+    { value: 'nature-outdoors', label: 'Nature and Outdoors', icon: '🌲', description: 'Hiking, wildlife watching, outdoor adventures' },
+    { value: 'music-entertainment', label: 'Music and Entertainment', icon: '🎵', description: 'Concerts, performances, entertainment events' },
+    { value: 'sports-recreation', label: 'Sports and Recreation', icon: '⚽', description: 'Sports activities, recreational games, adventures' },
+    { value: 'business-tech', label: 'Business and Tech', icon: '💼', description: 'Workshops, networking events, tech demos' }
   ];
 
   const amenitiesList = [
@@ -57,9 +77,26 @@ function PropertyListing({ onSave, initialData = {} }) {
     'Check-in after 3 PM', 'Check-out before 11 AM', 'No loud noise after 10 PM'
   ];
 
+  const includedItemsList = [
+    'Equipment provided', 'Food and drinks', 'Transportation', 
+    'Tickets/entry fees', 'Souvenirs', 'Photos', 'Certificates'
+  ];
+
+  const requirementsList = [
+    'Physical fitness required', 'Age restriction', 'Weather dependent',
+    'Special clothing needed', 'Previous experience needed', 'ID required'
+  ];
+
+  const skillLevels = [
+    { value: 'beginner', label: 'Beginner - No experience needed' },
+    { value: 'intermediate', label: 'Intermediate - Some experience helpful' },
+    { value: 'advanced', label: 'Advanced - Experience required' },
+    { value: 'all-levels', label: 'All Levels - Suitable for everyone' }
+  ];
+
   // Auto-save functionality
   useEffect(() => {
-    if ((formData.title || formData.description) && !initialData.id) {
+    if ((formData.title || formData.description) && !initialData?.id) {
       const autoSaveTimer = setTimeout(() => {
         if (!isSubmitting) {
           handleAutoSave();
@@ -105,12 +142,12 @@ function PropertyListing({ onSave, initialData = {} }) {
         hostName: user.displayName,
         hostEmail: user.email,
         status: 'draft',
-        createdAt: initialData.id ? formData.createdAt : new Date(),
+        createdAt: initialData?.id ? formData.createdAt : new Date(),
         updatedAt: new Date(),
         lastSavedAt: new Date()
       };
 
-      if (initialData.id) {
+      if (initialData?.id) {
         await updateDoc(doc(db, 'properties', initialData.id), propertyData);
       }
       console.log('Auto-saved draft');
@@ -141,6 +178,24 @@ function PropertyListing({ onSave, initialData = {} }) {
     }));
   };
 
+  const handleIncludedItemToggle = (item) => {
+    setFormData(prev => ({
+      ...prev,
+      includedItems: prev.includedItems.includes(item)
+        ? prev.includedItems.filter(i => i !== item)
+        : [...prev.includedItems, item]
+    }));
+  };
+
+  const handleRequirementToggle = (requirement) => {
+    setFormData(prev => ({
+      ...prev,
+      requirements: prev.requirements.includes(requirement)
+        ? prev.requirements.filter(r => r !== requirement)
+        : [...prev.requirements, requirement]
+    }));
+  };
+
   const handleSaveDraft = async () => {
     setIsSubmitting(true);
     try {
@@ -151,12 +206,12 @@ function PropertyListing({ onSave, initialData = {} }) {
         hostName: user.displayName,
         hostEmail: user.email,
         status: 'draft',
-        createdAt: initialData.id ? formData.createdAt : new Date(),
+        createdAt: initialData?.id ? formData.createdAt : new Date(),
         updatedAt: new Date(),
         lastSavedAt: new Date()
       };
 
-      if (initialData.id) {
+      if (initialData?.id) {
         await updateDoc(doc(db, 'properties', initialData.id), propertyData);
       } else {
         await addDoc(collection(db, 'properties'), propertyData);
@@ -188,9 +243,9 @@ function PropertyListing({ onSave, initialData = {} }) {
         hostEmail: user.email,
         status: 'published',
         publishedAt: new Date(),
-        createdAt: initialData.createdAt || new Date(),
+        createdAt: initialData?.createdAt || new Date(),
         updatedAt: new Date(),
-        hostPoints: (initialData.hostPoints || 0) + pointsEarned,
+        hostPoints: (initialData?.hostPoints || 0) + pointsEarned,
         isFeatured: pointsEarned >= 50,
         views: 0,
         bookingsCount: 0,
@@ -199,7 +254,7 @@ function PropertyListing({ onSave, initialData = {} }) {
       };
 
       let result;
-      if (initialData.id) {
+      if (initialData?.id) {
         await updateDoc(doc(db, 'properties', initialData.id), propertyData);
         result = { id: initialData.id };
       } else {
@@ -235,6 +290,12 @@ function PropertyListing({ onSave, initialData = {} }) {
     if (!formData.location.country.trim()) errors.push('Country is required');
     if (formData.images.length === 0) errors.push('At least one image is required');
 
+    // Experience-specific validation
+    if (formData.category === 'experience') {
+      if (!formData.experienceType) errors.push('Please select an experience type');
+      if (!formData.meetingPoint.trim()) errors.push('Meeting point is required for experiences');
+    }
+
     if (errors.length > 0) {
       alert('Please fix the following errors:\n' + errors.join('\n'));
       return false;
@@ -267,7 +328,11 @@ function PropertyListing({ onSave, initialData = {} }) {
           <label>Property Title *</label>
           <input
             type="text"
-            placeholder="e.g., Beautiful Beachfront Villa"
+            placeholder={
+              formData.category === 'experience' 
+                ? "e.g., Traditional Cooking Class with Local Chef"
+                : "e.g., Beautiful Beachfront Villa"
+            }
             value={formData.title}
             onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
           />
@@ -292,10 +357,44 @@ function PropertyListing({ onSave, initialData = {} }) {
           </div>
         </div>
 
+        {/* Experience Type Selection - Only show when category is experience */}
+        {formData.category === 'experience' && (
+          <div className="input-group">
+            <label>What experience will you offer guests? *</label>
+            <div className="experience-type-grid">
+              {experienceTypes.map(exp => (
+                <label key={exp.value} className="experience-type-option">
+                  <input
+                    type="radio"
+                    name="experienceType"
+                    value={exp.value}
+                    checked={formData.experienceType === exp.value}
+                    onChange={(e) => setFormData(prev => ({ 
+                      ...prev, 
+                      experienceType: e.target.value 
+                    }))}
+                  />
+                  <div className="experience-type-card">
+                    <span className="experience-icon">{exp.icon}</span>
+                    <div className="experience-info">
+                      <div className="experience-label">{exp.label}</div>
+                      <div className="experience-description">{exp.description}</div>
+                    </div>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="input-group">
           <label>Description *</label>
           <textarea
-            placeholder="Describe your property in detail..."
+            placeholder={
+              formData.category === 'experience' 
+                ? "Describe your experience in detail. What will guests learn, see, or do? What makes it special? What should guests expect?"
+                : "Describe your property in detail. What makes it unique? What amenities do you offer?"
+            }
             value={formData.description}
             onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
             rows="4"
@@ -303,6 +402,134 @@ function PropertyListing({ onSave, initialData = {} }) {
           <div className="char-counter">{formData.description.length} characters</div>
         </div>
       </div>
+
+      {/* Experience Details Section - Only show when category is experience */}
+      {formData.category === 'experience' && (
+        <div className="form-section">
+          <h3>Experience Details</h3>
+          
+          <div className="form-row">
+            <div className="input-group">
+              <label>Duration *</label>
+              <div className="duration-input">
+                <input
+                  type="number"
+                  min="1"
+                  max="24"
+                  value={formData.duration}
+                  onChange={(e) => setFormData(prev => ({ 
+                    ...prev, 
+                    duration: parseInt(e.target.value) || 1
+                  }))}
+                />
+                <select
+                  value={formData.durationUnit}
+                  onChange={(e) => setFormData(prev => ({ 
+                    ...prev, 
+                    durationUnit: e.target.value 
+                  }))}
+                >
+                  <option value="minutes">Minutes</option>
+                  <option value="hours">Hours</option>
+                  <option value="days">Days</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="input-group">
+              <label>Maximum Group Size *</label>
+              <div className="counter-input">
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ 
+                    ...prev, 
+                    groupSize: Math.max(1, prev.groupSize - 1) 
+                  }))}
+                  className="counter-btn"
+                >-</button>
+                <span>{formData.groupSize} {formData.groupSize === 1 ? 'guest' : 'guests'}</span>
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ 
+                    ...prev, 
+                    groupSize: prev.groupSize + 1 
+                  }))}
+                  className="counter-btn"
+                >+</button>
+              </div>
+            </div>
+          </div>
+
+          <div className="input-group">
+            <label>Meeting Point *</label>
+            <input
+              type="text"
+              placeholder="Where will you meet your guests? (Exact address or specific location)"
+              value={formData.meetingPoint}
+              onChange={(e) => setFormData(prev => ({ 
+                ...prev, 
+                meetingPoint: e.target.value 
+              }))}
+            />
+          </div>
+
+          <div className="input-group">
+            <label>Skill Level</label>
+            <div className="skill-level-options">
+              {skillLevels.map(level => (
+                <label key={level.value} className="skill-level-option">
+                  <input
+                    type="radio"
+                    name="skillLevel"
+                    value={level.value}
+                    checked={formData.skillLevel === level.value}
+                    onChange={(e) => setFormData(prev => ({ 
+                      ...prev, 
+                      skillLevel: e.target.value 
+                    }))}
+                  />
+                  <span className="checkmark"></span>
+                  {level.label}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="input-group">
+            <label>What's Included</label>
+            <div className="included-items-grid">
+              {includedItemsList.map(item => (
+                <label key={item} className="included-item-option">
+                  <input
+                    type="checkbox"
+                    checked={formData.includedItems.includes(item)}
+                    onChange={(e) => handleIncludedItemToggle(item)}
+                  />
+                  <span className="checkmark"></span>
+                  {item}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="input-group">
+            <label>Requirements & Restrictions</label>
+            <div className="requirements-grid">
+              {requirementsList.map(req => (
+                <label key={req} className="requirement-option">
+                  <input
+                    type="checkbox"
+                    checked={formData.requirements.includes(req)}
+                    onChange={(e) => handleRequirementToggle(req)}
+                  />
+                  <span className="checkmark"></span>
+                  {req}
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="form-section">
         <h3>Property Images</h3>
@@ -389,76 +616,86 @@ function PropertyListing({ onSave, initialData = {} }) {
         </div>
       </div>
 
-      <div className="form-section">
-        <h3>Property Details</h3>
-        <div className="details-grid">
-          <div className="detail-item">
-            <label>Max Guests</label>
-            <div className="counter-input">
-              <button
-                onClick={() => setFormData(prev => ({ ...prev, maxGuests: Math.max(1, prev.maxGuests - 1) }))}
-                className="counter-btn"
-              >-</button>
-              <span>{formData.maxGuests}</span>
-              <button
-                onClick={() => setFormData(prev => ({ ...prev, maxGuests: prev.maxGuests + 1 }))}
-                className="counter-btn"
-              >+</button>
+      {formData.category !== 'experience' && (
+        <div className="form-section">
+          <h3>Property Details</h3>
+          <div className="details-grid">
+            <div className="detail-item">
+              <label>Max Guests</label>
+              <div className="counter-input">
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, maxGuests: Math.max(1, prev.maxGuests - 1) }))}
+                  className="counter-btn"
+                >-</button>
+                <span>{formData.maxGuests}</span>
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, maxGuests: prev.maxGuests + 1 }))}
+                  className="counter-btn"
+                >+</button>
+              </div>
             </div>
-          </div>
-          
-          <div className="detail-item">
-            <label>Bedrooms</label>
-            <div className="counter-input">
-              <button
-                onClick={() => setFormData(prev => ({ ...prev, bedrooms: Math.max(0, prev.bedrooms - 1) }))}
-                className="counter-btn"
-              >-</button>
-              <span>{formData.bedrooms}</span>
-              <button
-                onClick={() => setFormData(prev => ({ ...prev, bedrooms: prev.bedrooms + 1 }))}
-                className="counter-btn"
-              >+</button>
+            
+            <div className="detail-item">
+              <label>Bedrooms</label>
+              <div className="counter-input">
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, bedrooms: Math.max(0, prev.bedrooms - 1) }))}
+                  className="counter-btn"
+                >-</button>
+                <span>{formData.bedrooms}</span>
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, bedrooms: prev.bedrooms + 1 }))}
+                  className="counter-btn"
+                >+</button>
+              </div>
             </div>
-          </div>
-          
-          <div className="detail-item">
-            <label>Beds</label>
-            <div className="counter-input">
-              <button
-                onClick={() => setFormData(prev => ({ ...prev, beds: Math.max(0, prev.beds - 1) }))}
-                className="counter-btn"
-              >-</button>
-              <span>{formData.beds}</span>
-              <button
-                onClick={() => setFormData(prev => ({ ...prev, beds: prev.beds + 1 }))}
-                className="counter-btn"
-              >+</button>
+            
+            <div className="detail-item">
+              <label>Beds</label>
+              <div className="counter-input">
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, beds: Math.max(0, prev.beds - 1) }))}
+                  className="counter-btn"
+                >-</button>
+                <span>{formData.beds}</span>
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, beds: prev.beds + 1 }))}
+                  className="counter-btn"
+                >+</button>
+              </div>
             </div>
-          </div>
-          
-          <div className="detail-item">
-            <label>Bathrooms</label>
-            <div className="counter-input">
-              <button
-                onClick={() => setFormData(prev => ({ ...prev, bathrooms: Math.max(0, prev.bathrooms - 0.5) }))}
-                className="counter-btn"
-              >-</button>
-              <span>{formData.bathrooms}</span>
-              <button
-                onClick={() => setFormData(prev => ({ ...prev, bathrooms: prev.bathrooms + 0.5 }))}
-                className="counter-btn"
-              >+</button>
+            
+            <div className="detail-item">
+              <label>Bathrooms</label>
+              <div className="counter-input">
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, bathrooms: Math.max(0, prev.bathrooms - 0.5) }))}
+                  className="counter-btn"
+                >-</button>
+                <span>{formData.bathrooms}</span>
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, bathrooms: prev.bathrooms + 0.5 }))}
+                  className="counter-btn"
+                >+</button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="form-section">
         <h3>Pricing & Offers</h3>
         <div className="pricing-row">
           <div className="input-group">
-            <label>Base Price per Night ($) *</label>
+            <label>Base Price per {formData.category === 'experience' ? 'Person' : 'Night'} ($) *</label>
             <input
               type="number"
               placeholder="0.00"
@@ -493,26 +730,28 @@ function PropertyListing({ onSave, initialData = {} }) {
         </div>
       </div>
 
-      <div className="form-section">
-        <h3>Amenities</h3>
-        <div className="amenities-grid">
-          {amenitiesList.map(amenity => (
-            <label key={amenity} className="amenity-option">
-              <input
-                type="checkbox"
-                checked={formData.amenities.includes(amenity)}
-                onChange={() => handleAmenityToggle(amenity)}
-              />
-              <span className="checkmark"></span>
-              {amenity}
-            </label>
-          ))}
+      {formData.category !== 'experience' && (
+        <div className="form-section">
+          <h3>Amenities</h3>
+          <div className="amenities-grid">
+            {amenitiesList.map(amenity => (
+              <label key={amenity} className="amenity-option">
+                <input
+                  type="checkbox"
+                  checked={formData.amenities.includes(amenity)}
+                  onChange={() => handleAmenityToggle(amenity)}
+                />
+                <span className="checkmark"></span>
+                {amenity}
+              </label>
+            ))}
+          </div>
+          <div className="amenities-stats">
+            {formData.amenities.length} amenit{formData.amenities.length !== 1 ? 'ies' : 'y'} selected •
+            {formData.amenities.length >= 5 ? ' ✅' : ' ❌'} Minimum 5 amenities for bonus points
+          </div>
         </div>
-        <div className="amenities-stats">
-          {formData.amenities.length} amenit{formData.amenities.length !== 1 ? 'ies' : 'y'} selected •
-          {formData.amenities.length >= 5 ? ' ✅' : ' ❌'} Minimum 5 amenities for bonus points
-        </div>
-      </div>
+      )}
 
       <div className="form-section">
         <h3>Policies & Rules</h3>
@@ -531,49 +770,53 @@ function PropertyListing({ onSave, initialData = {} }) {
           </select>
         </div>
 
-        <div className="input-group">
-          <label>House Rules</label>
-          <div className="rules-grid">
-            {houseRulesList.map(rule => (
-              <label key={rule} className="rule-option">
-                <input
-                  type="checkbox"
-                  checked={formData.houseRules.includes(rule)}
-                  onChange={() => handleHouseRuleToggle(rule)}
-                />
-                <span className="checkmark"></span>
-                {rule}
-              </label>
-            ))}
-          </div>
-        </div>
-
-        <div className="form-row">
+        {formData.category !== 'experience' && (
           <div className="input-group">
-            <label>Check-in Time</label>
-            <select
-              value={formData.checkInTime}
-              onChange={(e) => setFormData(prev => ({ ...prev, checkInTime: e.target.value }))}
-            >
-              <option value="14:00">2:00 PM</option>
-              <option value="15:00">3:00 PM</option>
-              <option value="16:00">4:00 PM</option>
-              <option value="17:00">5:00 PM</option>
-            </select>
+            <label>House Rules</label>
+            <div className="rules-grid">
+              {houseRulesList.map(rule => (
+                <label key={rule} className="rule-option">
+                  <input
+                    type="checkbox"
+                    checked={formData.houseRules.includes(rule)}
+                    onChange={() => handleHouseRuleToggle(rule)}
+                  />
+                  <span className="checkmark"></span>
+                  {rule}
+                </label>
+              ))}
+            </div>
           </div>
+        )}
 
-          <div className="input-group">
-            <label>Check-out Time</label>
-            <select
-              value={formData.checkOutTime}
-              onChange={(e) => setFormData(prev => ({ ...prev, checkOutTime: e.target.value }))}
-            >
-              <option value="10:00">10:00 AM</option>
-              <option value="11:00">11:00 AM</option>
-              <option value="12:00">12:00 PM</option>
-            </select>
+        {formData.category !== 'experience' && (
+          <div className="form-row">
+            <div className="input-group">
+              <label>Check-in Time</label>
+              <select
+                value={formData.checkInTime}
+                onChange={(e) => setFormData(prev => ({ ...prev, checkInTime: e.target.value }))}
+              >
+                <option value="14:00">2:00 PM</option>
+                <option value="15:00">3:00 PM</option>
+                <option value="16:00">4:00 PM</option>
+                <option value="17:00">5:00 PM</option>
+              </select>
+            </div>
+
+            <div className="input-group">
+              <label>Check-out Time</label>
+              <select
+                value={formData.checkOutTime}
+                onChange={(e) => setFormData(prev => ({ ...prev, checkOutTime: e.target.value }))}
+              >
+                <option value="10:00">10:00 AM</option>
+                <option value="11:00">11:00 AM</option>
+                <option value="12:00">12:00 PM</option>
+              </select>
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="form-row">
           <div className="input-group">

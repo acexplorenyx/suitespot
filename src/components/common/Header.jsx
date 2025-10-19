@@ -88,7 +88,7 @@ function Navbar() {
             
             <div className="navbar-right">
                 <button className="become-host" onClick={handleBecomeHost}>
-                    {user ? 'Host Dashboard' : 'Become a host'}
+                    {user ? 'Switch to Host' : 'Become a host'}
                 </button>
                 
                 {user ? (

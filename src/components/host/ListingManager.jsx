@@ -200,31 +200,33 @@ function ListingsManager({ listings }) {
 
   return (
     <div className="listings-manager">
-      {/* Quick Actions */}
-      <QuickActions 
-        onAddListing={() => setShowForm(true)}
-        totalListings={listings.length}
-        publishedListings={listings.filter(l => l.status === 'published').length}
-      />
-
       <div className="listings-header">
         <div className="header-left">
-          <h2>Your Listings</h2>
+          <h1>Your Listings</h1>
           <p>Manage your properties and experiences</p>
         </div>
-        <div className="header-stats">
-          <div className="stat-item">
-            <span className="stat-number">{listings.length}</span>
-            <span className="stat-label">Total</span>
-          </div>
-          <div className="stat-item">
-            <span className="stat-number">{listings.filter(l => l.status === 'published').length}</span>
-            <span className="stat-label">Published</span>
-          </div>
-          <div className="stat-item">
-            <span className="stat-number">{listings.filter(l => l.status === 'draft').length}</span>
-            <span className="stat-label">Drafts</span>
-          </div>
+        <div className="header-actions">
+          <button 
+            className="add-listing-btn primary"
+            onClick={() => setShowForm(true)}>
+            + Add New Listing
+          </button>
+        </div>
+      </div>
+
+      {/* Stats Overview */}
+      <div className="listings-stats">
+        <div className="stat-item">
+          <span className="stat-number">{listings.length}</span>
+          <span className="stat-label">Total</span>
+        </div>
+        <div className="stat-item">
+          <span className="stat-number">{listings.filter(l => l.status === 'published').length}</span>
+          <span className="stat-label">Published</span>
+        </div>
+        <div className="stat-item">
+          <span className="stat-number">{listings.filter(l => l.status === 'draft').length}</span>
+          <span className="stat-label">Drafts</span>
         </div>
       </div>
 
@@ -569,38 +571,6 @@ function BulkActionsToolbar({ selectedCount, onBulkPublish, onBulkDelete, onBulk
         </button>
         <button className="bulk-btn cancel" onClick={onCancel}>
           ❌ Cancel
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// Quick Actions Component
-function QuickActions({ onAddListing, totalListings, publishedListings }) {
-  return (
-    <div className="quick-actions">
-      <div className="quick-actions-header">
-        <h3>Quick Actions</h3>
-        <div className="actions-stats">
-          <span>{totalListings} Total Listings • {publishedListings} Published</span>
-        </div>
-      </div>
-      <div className="action-buttons">
-        <button className="quick-action-btn primary" onClick={onAddListing}>
-          <span className="action-icon">➕</span>
-          <span className="action-text">Add New Listing</span>
-        </button>
-        <button className="quick-action-btn">
-          <span className="action-icon">📅</span>
-          <span className="action-text">Manage Calendar</span>
-        </button>
-        <button className="quick-action-btn">
-          <span className="action-icon">📊</span>
-          <span className="action-text">View Analytics</span>
-        </button>
-        <button className="quick-action-btn">
-          <span className="action-icon">💰</span>
-          <span className="action-text">Earnings Report</span>
         </button>
       </div>
     </div>

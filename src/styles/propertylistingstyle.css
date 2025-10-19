@@ -1,4 +1,4 @@
-/* Property Listing Form Styles */
+/* Property Listing Form */
 .property-form {
   max-width: 800px;
   margin: 0 auto;
@@ -8,7 +8,7 @@
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
 }
 
-/* Enhanced Points Display */
+/* Points Display */
 .points-display {
   margin-bottom: 2rem;
 }
@@ -1035,5 +1035,169 @@
     flex-direction: column;
     text-align: center;
     gap: 0.5rem;
+  }
+}
+
+/* Add this to your propertylistingstyle.css */
+
+/* Experience Type Grid */
+.experience-type-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.experience-type-option {
+  cursor: pointer;
+}
+
+.experience-type-option input[type="radio"] {
+  display: none;
+}
+
+.experience-type-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 20px;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  background: white;
+}
+
+.experience-type-option input[type="radio"]:checked + .experience-type-card {
+  border-color: #0ecfb8;
+  background: #f0fdfa;
+  box-shadow: 0 4px 12px rgba(14, 207, 184, 0.15);
+}
+
+.experience-type-card:hover {
+  border-color: #0ecfb8;
+  transform: translateY(-2px);
+}
+
+.experience-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.experience-info {
+  flex: 1;
+}
+
+.experience-label {
+  font-weight: 600;
+  color: #090d20;
+  margin-bottom: 4px;
+  font-size: 15px;
+}
+
+.experience-description {
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+/* Experience Details */
+.duration-input {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.duration-input input {
+  width: 80px;
+  padding: 12px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.duration-input select {
+  padding: 12px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  background: white;
+}
+
+/* Skill Level Options */
+.skill-level-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.skill-level-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.skill-level-option:hover {
+  border-color: #0ecfb8;
+}
+
+.skill-level-option input[type="radio"]:checked + .checkmark {
+  background: #0ecfb8;
+  border-color: #0ecfb8;
+}
+
+.skill-level-option input[type="radio"]:checked ~ span:last-child {
+  color: #0ecfb8;
+  font-weight: 600;
+}
+
+/* Included Items and Requirements Grid */
+.included-items-grid,
+.requirements-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.included-item-option,
+.requirement-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.included-item-option:hover,
+.requirement-option:hover {
+  border-color: #0ecfb8;
+  background: #f8fafc;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .experience-type-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .included-items-grid,
+  .requirements-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .duration-input {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .duration-input input {
+    width: 100%;
   }
 }

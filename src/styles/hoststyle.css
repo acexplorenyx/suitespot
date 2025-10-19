@@ -210,6 +210,7 @@
   border-radius: 50%;
   overflow: hidden;
   background: #f1f5f9;
+  position: relative;
 }
 
 .user-avatar img {
@@ -221,6 +222,18 @@
 .user-avatar.large {
   width: 48px;
   height: 48px;
+}
+
+.avatar-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #0ecfb8 0%, #06b6d4 100%);
+  color: white;
+  font-weight: 600;
+  font-size: 16px;
 }
 
 .user-name {
@@ -239,17 +252,17 @@
   transform: rotate(180deg);
 }
 
-/* User Dropdown */
+/* User Dropdown - Airbnb Style */
 .user-dropdown {
   position: absolute;
   top: 100%;
   right: 0;
   background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-  min-width: 260px;
-  margin-top: 0.5rem;
+  border: 1px solid #dddddd;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  min-width: 280px;
+  margin-top: 8px;
   z-index: 1000;
   overflow: hidden;
   animation: dropdown-appear 0.2s ease-out;
@@ -267,19 +280,22 @@
 }
 
 .dropdown-section {
-  padding: 0.75rem 0;
+  padding: 0;
+}
+
+.dropdown-section:not(:last-child) {
   border-bottom: 1px solid #f1f5f9;
 }
 
-.dropdown-section:last-child {
-  border-bottom: none;
+.user-info-section {
+  padding: 16px;
+  background: #f8fafc;
 }
 
 .user-info {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0 1rem;
+  gap: 12px;
 }
 
 .user-details {
@@ -288,8 +304,21 @@
 
 .user-details .user-name {
   font-weight: 600;
-  color: #1e293b;
-  margin-bottom: 0.25rem;
+  color: #222222;
+  margin-bottom: 4px;
+  font-size: 16px;
+}
+
+.user-details .user-email {
+  color: #717171;
+  font-size: 14px;
+}
+
+/* Dropdown Dividers */
+.dropdown-divider {
+  height: 1px;
+  background: #f1f5f9;
+  margin: 0;
 }
 
 .user-email {
@@ -300,38 +329,67 @@
 .dropdown-item {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 12px;
   width: 100%;
-  padding: 0.75rem 1rem;
+  padding: 12px 16px;
   border: none;
   background: white;
   cursor: pointer;
-  transition: all 0.3s ease;
-  font-size: 0.9rem;
-  color: #374151;
+  transition: background-color 0.2s ease;
+  font-size: 14px;
+  color: #222222;
+  text-align: left;
 }
 
 .dropdown-item:hover {
-  background: #f8fafc;
+  background: #f7f7f7;
 }
 
 .dropdown-item.logout {
-  color: #ef4444;
+  color: #ff385c;
 }
 
 .dropdown-item.logout:hover {
-  background: #fef2f2;
+  background: #fff8f8;
 }
 
 .item-icon {
-  font-size: 1.1rem;
+  font-size: 16px;
   width: 20px;
   text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Specific icon colors to match Airbnb */
+.item-icon.profile-icon {
+  color: #8b5cf6;
+}
+
+.item-icon.settings-icon {
+  color: #8b5cf6;
+}
+
+.item-icon.rewards-icon {
+  color: #fbbf24;
+}
+
+.item-icon.guest-icon {
+  color: #8b5cf6;
+}
+
+.item-icon.help-icon {
+  color: #8b5cf6;
+}
+
+.item-icon.logout-icon {
+  color: #92400e;
 }
 
 .item-text {
   flex: 1;
-  text-align: left;
+  font-weight: 500;
 }
 
 /* Host Points Display */

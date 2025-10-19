@@ -3,19 +3,21 @@ import '../../styles/messagesstyle.css';
 
 import { 
   collection, query, where, onSnapshot, doc, updateDoc, addDoc, 
-  orderBy, serverTimestamp, getDocs, limit } from 'firebase/firestore';
+  serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../../firebase/firebase';
 import { createTestConversations } from '../../utils/createTestMessages';
 
-function MessagesManager({ messages: initialMessages }) {
+function MessagesManager() {
   const [conversations, setConversations] = useState([]);
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [conversationMessages, setConversationMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
-  const [filter, setFilter] = useState('all'); // all, unread, archived
+  const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const messagesEndRef = useRef(null);
+  const dropdownRef = useRef(null);
 
   // Scroll to bottom of messages
   const scrollToBottom = () => {
@@ -26,6 +28,20 @@ function MessagesManager({ messages: initialMessages }) {
     scrollToBottom();
   }, [conversationMessages]);
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowFilterDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   // Fetch conversations
   useEffect(() => {
     const user = auth.currentUser;
@@ -34,7 +50,6 @@ function MessagesManager({ messages: initialMessages }) {
       return;
     }
 
-    // Fetch conversations for this host
     const conversationsQuery = query(
       collection(db, 'conversations'),
       where('hostId', '==', user.uid)
@@ -45,19 +60,16 @@ function MessagesManager({ messages: initialMessages }) {
         id: doc.id,
         ...doc.data()
       }))
-      // Sort in JavaScript instead of Firestore
       .sort((a, b) => {
         const aTime = a.lastUpdated?.toMillis() || 0;
         const bTime = b.lastUpdated?.toMillis() || 0;
         return bTime - aTime;
       });
       
-      console.log('Loaded conversations:', conversationsData.length, conversationsData);
       setConversations(conversationsData);
       setLoading(false);
     }, (error) => {
       console.error('Error fetching conversations:', error);
-      alert('Error loading conversations: ' + error.message);
       setLoading(false);
     });
 
@@ -80,7 +92,6 @@ function MessagesManager({ messages: initialMessages }) {
         id: doc.id,
         ...doc.data()
       }))
-      // Sort in JavaScript
       .sort((a, b) => {
         const aTime = a.timestamp?.toMillis() || 0;
         const bTime = b.timestamp?.toMillis() || 0;
@@ -97,7 +108,7 @@ function MessagesManager({ messages: initialMessages }) {
   const filteredConversations = conversations.filter(conversation => {
     const matchesFilter = 
       filter === 'all' ? !conversation.isArchived :
-      filter === 'unread' ? (conversation.hostUnreadCount > 0 || conversation.unreadCount > 0) && !conversation.isArchived :
+      filter === 'unread' ? (conversation.hostUnreadCount > 0) && !conversation.isArchived :
       filter === 'archived' ? conversation.isArchived : true;
     
     const matchesSearch = 
@@ -107,8 +118,6 @@ function MessagesManager({ messages: initialMessages }) {
 
     return matchesFilter && matchesSearch;
   });
-  
-  console.log('Filter:', filter, 'Total conversations:', conversations.length, 'Filtered:', filteredConversations.length);
 
   // Mark conversation as read
   const markAsRead = async (conversationId) => {
@@ -144,13 +153,12 @@ function MessagesManager({ messages: initialMessages }) {
         lastMessage: newMessage,
         lastMessageSender: 'host',
         lastUpdated: serverTimestamp(),
-        guestUnreadCount: (selectedConversation.guestUnreadCount || 0) + 1 // Guest has unread message
+        guestUnreadCount: (selectedConversation.guestUnreadCount || 0) + 1
       });
 
       setNewMessage('');
     } catch (error) {
       console.error('Error sending message:', error);
-      alert('Error sending message. Please try again.');
     }
   };
 
@@ -162,23 +170,8 @@ function MessagesManager({ messages: initialMessages }) {
         lastUpdated: serverTimestamp()
       });
       setSelectedConversation(null);
-      alert('Conversation archived successfully!');
     } catch (error) {
       console.error('Error archiving conversation:', error);
-      alert('Error archiving conversation.');
-    }
-  };
-
-  // Unarchive conversation
-  const unarchiveConversation = async (conversationId) => {
-    try {
-      await updateDoc(doc(db, 'conversations', conversationId), {
-        isArchived: false,
-        lastUpdated: serverTimestamp()
-      });
-      alert('Conversation unarchived successfully!');
-    } catch (error) {
-      console.error('Error unarchiving conversation:', error);
     }
   };
 
@@ -226,9 +219,10 @@ function MessagesManager({ messages: initialMessages }) {
   return (
     <div className="messages-manager">
       <div className="messages-header">
-        <div>
-          <h2>Messages</h2>
-          <p>Communicate with your guests</p>
+        <div className="header-content">
+          <div className="header-title">
+            <h2>Messages</h2>
+          </div>
         </div>
         {conversations.length === 0 && !loading && (
           <button 
@@ -257,22 +251,33 @@ function MessagesManager({ messages: initialMessages }) {
             </div>
 
             <div className="filter-tabs">
-              {[
-                { key: 'all', label: 'All', count: conversations.filter(c => !c.isArchived).length },
-                { key: 'unread', label: 'Unread', count: totalUnreadCount },
-                { key: 'archived', label: 'Archived', count: conversations.filter(c => c.isArchived).length }
-              ].map(filterType => (
-                <button
-                  key={filterType.key}
-                  className={`filter-tab ${filter === filterType.key ? 'active' : ''}`}
-                  onClick={() => setFilter(filterType.key)}
-                >
-                  {filterType.label}
-                  {filterType.count > 0 && (
-                    <span className="filter-count">{filterType.count}</span>
-                  )}
-                </button>
-              ))}
+              <button
+                className={`filter-tab ${filter === 'all' ? 'active' : ''}`}
+                onClick={() => setFilter('all')}
+              >
+                All
+                {conversations.filter(c => !c.isArchived).length > 0 && (
+                  <span className="filter-count">{conversations.filter(c => !c.isArchived).length}</span>
+                )}
+              </button>
+              <button
+                className={`filter-tab ${filter === 'unread' ? 'active' : ''}`}
+                onClick={() => setFilter('unread')}
+              >
+                Unread
+                {totalUnreadCount > 0 && (
+                  <span className="filter-count">{totalUnreadCount}</span>
+                )}
+              </button>
+              <button
+                className={`filter-tab ${filter === 'archived' ? 'active' : ''}`}
+                onClick={() => setFilter('archived')}
+              >
+                Archived
+                {conversations.filter(c => c.isArchived).length > 0 && (
+                  <span className="filter-count">{conversations.filter(c => c.isArchived).length}</span>
+                )}
+              </button>
             </div>
           </div>
 
@@ -342,9 +347,6 @@ function MessagesManager({ messages: initialMessages }) {
                     {(conversation.hostUnreadCount || 0) > 0 && (
                       <span className="unread-badge">{conversation.hostUnreadCount}</span>
                     )}
-                    {conversation.isArchived && (
-                      <span className="archive-icon">📁</span>
-                    )}
                   </div>
                 </div>
               ))
@@ -377,23 +379,11 @@ function MessagesManager({ messages: initialMessages }) {
                   </div>
                 </div>
                 <div className="thread-actions">
-                  {selectedConversation.isArchived ? (
-                    <button 
-                      className="action-btn unarchive-btn"
-                      onClick={() => unarchiveConversation(selectedConversation.id)}
-                    >
-                      📂 Unarchive
-                    </button>
-                  ) : (
-                    <button 
-                      className="action-btn archive-btn"
-                      onClick={() => archiveConversation(selectedConversation.id)}
-                    >
-                      📁 Archive
-                    </button>
-                  )}
-                  <button className="action-btn info-btn" title="View booking details">
-                    ℹ️ Info
+                  <button 
+                    className="action-btn archive-btn"
+                    onClick={() => archiveConversation(selectedConversation.id)}
+                  >
+                    📁 Archive
                   </button>
                 </div>
               </div>
@@ -461,14 +451,12 @@ function MessagesManager({ messages: initialMessages }) {
                   }}
                 />
                 <div className="input-actions">
-                  <button className="emoji-btn" title="Add emoji">😊</button>
-                  <button className="attach-btn" title="Attach file">📎</button>
                   <button 
                     className="send-btn"
                     onClick={sendMessage}
                     disabled={!newMessage.trim()}
                   >
-                    Send 📤
+                    Send
                   </button>
                 </div>
               </div>
@@ -482,38 +470,6 @@ function MessagesManager({ messages: initialMessages }) {
               </div>
             </div>
           )}
-        </div>
-      </div>
-
-      {/* Response Rate Stats */}
-      <div className="messages-stats">
-        <div className="stat-card">
-          <div className="stat-icon">💬</div>
-          <div className="stat-info">
-            <div className="stat-value">{conversations.filter(c => !c.isArchived).length}</div>
-            <div className="stat-label">Active Chats</div>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon">🔔</div>
-          <div className="stat-info">
-            <div className="stat-value">{totalUnreadCount}</div>
-            <div className="stat-label">Unread</div>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon">⚡</div>
-          <div className="stat-info">
-            <div className="stat-value">95%</div>
-            <div className="stat-label">Response Rate</div>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon">⏱️</div>
-          <div className="stat-info">
-            <div className="stat-value">1.2h</div>
-            <div className="stat-label">Avg. Response</div>
-          </div>
         </div>
       </div>
     </div>
