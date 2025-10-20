@@ -1,9 +1,19 @@
+// PropertyListing.jsx
 import React, { useState, useEffect } from 'react';
 import { collection, addDoc, updateDoc, doc, increment } from 'firebase/firestore';
 import { db, auth } from '../../firebase/firebase';
+import { motion, AnimatePresence } from 'framer-motion';
+import MapIntegration from '../common/MapIntegration';
 import '../../styles/propertylistingstyle.css';
 
 function PropertyListing({ onSave, initialData = null }) {
+  const [currentStep, setCurrentStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [direction, setDirection] = useState(0);
+  const [imageUrls, setImageUrls] = useState(initialData?.images || []);
+  const [earnedPoints, setEarnedPoints] = useState(0);
+  const [showMap, setShowMap] = useState(false);
+
   const [formData, setFormData] = useState({
     title: initialData?.title || '',
     category: initialData?.category || 'home',
@@ -12,7 +22,13 @@ function PropertyListing({ onSave, initialData = null }) {
     price: initialData?.price || '',
     discount: initialData?.discount || 0,
     promoCode: initialData?.promoCode || '',
-    location: initialData?.location || { address: '', city: '', country: '', coordinates: { lat: 0, lng: 0 } },
+    location: initialData?.location || { 
+      address: '', 
+      city: '', 
+      province: '', 
+      country: '', 
+      coordinates: { lat: 0, lng: 0 } 
+    },
     amenities: initialData?.amenities || [],
     images: initialData?.images || [],
     maxGuests: initialData?.maxGuests || 1,
@@ -28,7 +44,6 @@ function PropertyListing({ onSave, initialData = null }) {
     checkOutTime: initialData?.checkOutTime || '11:00',
     minimumStay: initialData?.minimumStay || 1,
     maximumStay: initialData?.maximumStay || 30,
-    // Experience fields
     experienceType: initialData?.experienceType || '',
     duration: initialData?.duration || 2,
     durationUnit: initialData?.durationUnit || 'hours',
@@ -36,12 +51,23 @@ function PropertyListing({ onSave, initialData = null }) {
     meetingPoint: initialData?.meetingPoint || '',
     includedItems: initialData?.includedItems || [],
     requirements: initialData?.requirements || [],
-    skillLevel: initialData?.skillLevel || 'beginner'
+    skillLevel: initialData?.skillLevel || 'beginner',
+    serviceType: initialData?.serviceType || '',
+    serviceArea: initialData?.serviceArea || '',
+    travelFee: initialData?.travelFee || 0,
+    equipmentProvided: initialData?.equipmentProvided || [],
+    serviceIncludes: initialData?.serviceIncludes || []
   });
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [imageUrls, setImageUrls] = useState(initialData?.images || []);
-  const [earnedPoints, setEarnedPoints] = useState(0);
+  const steps = [
+    { number: 1, title: 'Category', icon: '🏷️' },
+    { number: 2, title: 'Location', icon: '📍' },
+    { number: 3, title: 'Details', icon: '📝' },
+    { number: 4, title: 'Amenities', icon: '⭐' },
+    { number: 5, title: 'Photos', icon: '📷' },
+    { number: 6, title: 'Pricing', icon: '💰' },
+    { number: 7, title: 'Publish', icon: '🚀' }
+  ];
 
   const categories = [
     { value: 'home', label: 'Home/Apartment', icon: '🏠' },
@@ -50,14 +76,11 @@ function PropertyListing({ onSave, initialData = null }) {
   ];
 
   const experienceTypes = [
-    { value: 'art-design', label: 'Art and Design', icon: '🎨', description: 'Creative workshops, gallery tours, craft classes' },
-    { value: 'fitness-wellness', label: 'Fitness and Wellness', icon: '🧘‍♀️', description: 'Yoga sessions, meditation, fitness classes' },
-    { value: 'food-drink', label: 'Food and Drink', icon: '🍷', description: 'Cooking classes, wine tasting, food tours' },
-    { value: 'history-culture', label: 'History and Culture', icon: '🏛️', description: 'Historical tours, cultural experiences, museum visits' },
-    { value: 'nature-outdoors', label: 'Nature and Outdoors', icon: '🌲', description: 'Hiking, wildlife watching, outdoor adventures' },
-    { value: 'music-entertainment', label: 'Music and Entertainment', icon: '🎵', description: 'Concerts, performances, entertainment events' },
-    { value: 'sports-recreation', label: 'Sports and Recreation', icon: '⚽', description: 'Sports activities, recreational games, adventures' },
-    { value: 'business-tech', label: 'Business and Tech', icon: '💼', description: 'Workshops, networking events, tech demos' }
+    { value: 'art-design', label: 'Art and Design', icon: '🎨' },
+    { value: 'fitness-wellness', label: 'Fitness and Wellness', icon: '🧘‍♀️' },
+    { value: 'food-drink', label: 'Food and Drink', icon: '🍷' },
+    { value: 'history-culture', label: 'History and Culture', icon: '🏛️' },
+    { value: 'nature-outdoors', label: 'Nature and Outdoors', icon: '🌲' }
   ];
 
   const amenitiesList = [
@@ -66,94 +89,64 @@ function PropertyListing({ onSave, initialData = null }) {
     'EV Charger', 'Gym', 'Breakfast', 'Smoking Allowed', 'Pets Allowed'
   ];
 
-  const cancellationPolicies = [
-    { value: 'flexible', label: 'Flexible: Full refund 1 day before arrival' },
-    { value: 'moderate', label: 'Moderate: Full refund 5 days before arrival' },
-    { value: 'strict', label: 'Strict: 50% refund up to 1 week before arrival' }
-  ];
-
-  const houseRulesList = [
-    'No smoking', 'No parties/events', 'Pets allowed', 'Not suitable for children',
-    'Check-in after 3 PM', 'Check-out before 11 AM', 'No loud noise after 10 PM'
-  ];
-
-  const includedItemsList = [
-    'Equipment provided', 'Food and drinks', 'Transportation', 
-    'Tickets/entry fees', 'Souvenirs', 'Photos', 'Certificates'
-  ];
-
-  const requirementsList = [
-    'Physical fitness required', 'Age restriction', 'Weather dependent',
-    'Special clothing needed', 'Previous experience needed', 'ID required'
-  ];
-
-  const skillLevels = [
-    { value: 'beginner', label: 'Beginner - No experience needed' },
-    { value: 'intermediate', label: 'Intermediate - Some experience helpful' },
-    { value: 'advanced', label: 'Advanced - Experience required' },
-    { value: 'all-levels', label: 'All Levels - Suitable for everyone' }
-  ];
-
-  // Auto-save functionality
-  useEffect(() => {
-    if ((formData.title || formData.description) && !initialData?.id) {
-      const autoSaveTimer = setTimeout(() => {
-        if (!isSubmitting) {
-          handleAutoSave();
-        }
-      }, 30000);
-      
-      return () => clearTimeout(autoSaveTimer);
+  const handleNext = () => {
+    if (validateStep(currentStep)) {
+      setDirection(1);
+      setCurrentStep(prev => Math.min(prev + 1, steps.length));
     }
-  }, [formData.title, formData.description]);
-
-  // Calculate points for publishing
-  const calculateHostPoints = () => {
-    let points = 0;
-    
-    // Base points for creating listing
-    points += 10;
-    
-    // Points for completeness
-    if (formData.images.length >= 3) points += 20;
-    if (formData.amenities.length >= 5) points += 15;
-    if (formData.description.length > 100) points += 10;
-    if (formData.title.length > 10) points += 5;
-    
-    // Points for quality
-    if (formData.images.length >= 5) points += 25;
-    if (formData.amenities.length >= 10) points += 20;
-    if (formData.description.length > 200) points += 15;
-    
-    // Bonus for featured-ready listings
-    if (points >= 50) points += 10;
-    
-    return points;
   };
 
-  const handleAutoSave = async () => {
-    if (!formData.title && !formData.description) return;
-    
-    try {
-      const user = auth.currentUser;
-      const propertyData = {
-        ...formData,
-        hostId: user.uid,
-        hostName: user.displayName,
-        hostEmail: user.email,
-        status: 'draft',
-        createdAt: initialData?.id ? formData.createdAt : new Date(),
-        updatedAt: new Date(),
-        lastSavedAt: new Date()
-      };
+  const handleBack = () => {
+    setDirection(-1);
+    setCurrentStep(prev => Math.max(prev - 1, 1));
+  };
 
-      if (initialData?.id) {
-        await updateDoc(doc(db, 'properties', initialData.id), propertyData);
-      }
-      console.log('Auto-saved draft');
-    } catch (error) {
-      console.error('Error auto-saving:', error);
+  const validateStep = (step) => {
+    switch (step) {
+      case 1:
+        if (!formData.category) {
+          alert('Please select a category');
+          return false;
+        }
+        return true;
+      case 2:
+        if (!formData.location.address || !formData.location.city) {
+          alert('Please complete location details');
+          return false;
+        }
+        return true;
+      case 3:
+        if (!formData.title || !formData.description) {
+          alert('Please add title and description');
+          return false;
+        }
+        return true;
+      case 5:
+        if (formData.images.length < 3) {
+          alert('Please add at least 3 photos');
+          return false;
+        }
+        return true;
+      case 6:
+        if (!formData.price || formData.price <= 0) {
+          alert('Please set a valid price');
+          return false;
+        }
+        return true;
+      default:
+        return true;
     }
+  };
+
+  const handleLocationSelect = (locationData) => {
+    setFormData(prev => ({
+      ...prev,
+      location: {
+        ...prev.location,
+        ...locationData
+      }
+    }));
+    setShowMap(false);
   };
 
   const handleImageUpload = (e) => {
@@ -169,62 +162,26 @@ function PropertyListing({ onSave, initialData = null }) {
     setFormData(prev => ({ ...prev, images: newImages }));
   };
 
-  const handleHouseRuleToggle = (rule) => {
+  const handleAmenityToggle = (amenity) => {
     setFormData(prev => ({
       ...prev,
-      houseRules: prev.houseRules.includes(rule)
-        ? prev.houseRules.filter(r => r !== rule)
-        : [...prev.houseRules, rule]
+      amenities: prev.amenities.includes(amenity)
+        ? prev.amenities.filter(a => a !== amenity)
+        : [...prev.amenities, amenity]
     }));
   };
 
-  const handleIncludedItemToggle = (item) => {
-    setFormData(prev => ({
-      ...prev,
-      includedItems: prev.includedItems.includes(item)
-        ? prev.includedItems.filter(i => i !== item)
-        : [...prev.includedItems, item]
-    }));
-  };
-
-  const handleRequirementToggle = (requirement) => {
-    setFormData(prev => ({
-      ...prev,
-      requirements: prev.requirements.includes(requirement)
-        ? prev.requirements.filter(r => r !== requirement)
-        : [...prev.requirements, requirement]
-    }));
-  };
-
-  const handleSaveDraft = async () => {
-    setIsSubmitting(true);
-    try {
-      const user = auth.currentUser;
-      const propertyData = {
-        ...formData,
-        hostId: user.uid,
-        hostName: user.displayName,
-        hostEmail: user.email,
-        status: 'draft',
-        createdAt: initialData?.id ? formData.createdAt : new Date(),
-        updatedAt: new Date(),
-        lastSavedAt: new Date()
-      };
-
-      if (initialData?.id) {
-        await updateDoc(doc(db, 'properties', initialData.id), propertyData);
-      } else {
-        await addDoc(collection(db, 'properties'), propertyData);
-      }
-      
-      alert('Draft saved successfully!');
-      if (onSave) onSave();
-    } catch (error) {
-      console.error('Error saving draft:', error);
-      alert('Error saving draft. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
+  const calculateHostPoints = () => {
+    let points = 0;
+    if (formData.images.length >= 3) points += 20;
+    if (formData.amenities.length >= 5) points += 15;
+    if (formData.description.length > 100) points += 10;
+    if (formData.title.length > 10) points += 5;
+    if (formData.images.length >= 5) points += 25;
+    if (formData.amenities.length >= 10) points += 20;
+    if (formData.description.length > 200) points += 15;
+    if (points >= 50) points += 10;
+    return points + 10; // Base points
   };
 
   const handlePublish = async () => {
@@ -234,8 +191,7 @@ function PropertyListing({ onSave, initialData = null }) {
     try {
       const user = auth.currentUser;
       const pointsEarned = calculateHostPoints();
-      setEarnedPoints(pointsEarned);
-
+      
       const propertyData = {
         ...formData,
         hostId: user.uid,
@@ -261,7 +217,6 @@ function PropertyListing({ onSave, initialData = null }) {
         result = await addDoc(collection(db, 'properties'), propertyData);
       }
 
-      // Update user's total points
       const userRef = doc(db, 'users', user.uid);
       await updateDoc(userRef, {
         totalPoints: increment(pointsEarned),
@@ -286,15 +241,7 @@ function PropertyListing({ onSave, initialData = null }) {
     if (!formData.description.trim()) errors.push('Description is required');
     if (!formData.price || formData.price <= 0) errors.push('Valid price is required');
     if (!formData.location.address.trim()) errors.push('Address is required');
-    if (!formData.location.city.trim()) errors.push('City is required');
-    if (!formData.location.country.trim()) errors.push('Country is required');
     if (formData.images.length === 0) errors.push('At least one image is required');
-
-    // Experience-specific validation
-    if (formData.category === 'experience') {
-      if (!formData.experienceType) errors.push('Please select an experience type');
-      if (!formData.meetingPoint.trim()) errors.push('Meeting point is required for experiences');
-    }
 
     if (errors.length > 0) {
       alert('Please fix the following errors:\n' + errors.join('\n'));
@@ -303,282 +250,202 @@ function PropertyListing({ onSave, initialData = null }) {
     return true;
   };
 
-  const handleAmenityToggle = (amenity) => {
-    setFormData(prev => ({
-      ...prev,
-      amenities: prev.amenities.includes(amenity)
-        ? prev.amenities.filter(a => a !== amenity)
-        : [...prev.amenities, amenity]
-    }));
+  const stepVariants = {
+    enter: (direction) => ({
+      x: direction > 0 ? 300 : -300,
+      opacity: 0
+    }),
+    center: {
+      x: 0,
+      opacity: 1
+    },
+    exit: (direction) => ({
+      x: direction < 0 ? 300 : -300,
+      opacity: 0
+    })
   };
 
   return (
-    <div className="property-form">
-      {/* Enhanced Points Display */}
-      <PointsDisplay 
-        points={formData.hostPoints} 
-        earnedPoints={earnedPoints}
-        potentialPoints={calculateHostPoints()}
-      />
-
-      <div className="form-section">
-        <h3>Basic Information</h3>
-        
-        <div className="input-group">
-          <label>Property Title *</label>
-          <input
-            type="text"
-            placeholder={
-              formData.category === 'experience' 
-                ? "e.g., Traditional Cooking Class with Local Chef"
-                : "e.g., Beautiful Beachfront Villa"
-            }
-            value={formData.title}
-            onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-          />
-        </div>
-
-        <div className="input-group">
-          <label>Category *</label>
-          <div className="category-options">
-            {categories.map(cat => (
-              <label key={cat.value} className="category-option">
-                <input
-                  type="radio"
-                  name="category"
-                  value={cat.value}
-                  checked={formData.category === cat.value}
-                  onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                />
-                <span className="category-icon">{cat.icon}</span>
-                {cat.label}
-              </label>
-            ))}
-          </div>
-        </div>
-
-        {/* Experience Type Selection - Only show when category is experience */}
-        {formData.category === 'experience' && (
-          <div className="input-group">
-            <label>What experience will you offer guests? *</label>
-            <div className="experience-type-grid">
-              {experienceTypes.map(exp => (
-                <label key={exp.value} className="experience-type-option">
-                  <input
-                    type="radio"
-                    name="experienceType"
-                    value={exp.value}
-                    checked={formData.experienceType === exp.value}
-                    onChange={(e) => setFormData(prev => ({ 
-                      ...prev, 
-                      experienceType: e.target.value 
-                    }))}
-                  />
-                  <div className="experience-type-card">
-                    <span className="experience-icon">{exp.icon}</span>
-                    <div className="experience-info">
-                      <div className="experience-label">{exp.label}</div>
-                      <div className="experience-description">{exp.description}</div>
-                    </div>
-                  </div>
-                </label>
-              ))}
+    <div className="property-listing-wizard">
+      {/* Progress Bar */}
+      <div className="progress-container">
+        <div className="progress-steps">
+          {steps.map((step, index) => (
+            <div key={step.number} className="step-item">
+              <div className={`step-circle ${currentStep >= step.number ? 'active' : ''}`}>
+                <span className="step-icon">{step.icon}</span>
+                <span className="step-number">{step.number}</span>
+              </div>
+              <span className="step-label">{step.title}</span>
+              {index < steps.length - 1 && (
+                <div className={`step-connector ${currentStep > step.number ? 'active' : ''}`}></div>
+              )}
             </div>
-          </div>
-        )}
-
-        <div className="input-group">
-          <label>Description *</label>
-          <textarea
-            placeholder={
-              formData.category === 'experience' 
-                ? "Describe your experience in detail. What will guests learn, see, or do? What makes it special? What should guests expect?"
-                : "Describe your property in detail. What makes it unique? What amenities do you offer?"
-            }
-            value={formData.description}
-            onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-            rows="4"
-          />
-          <div className="char-counter">{formData.description.length} characters</div>
+          ))}
         </div>
       </div>
 
-      {/* Experience Details Section - Only show when category is experience */}
-      {formData.category === 'experience' && (
-        <div className="form-section">
-          <h3>Experience Details</h3>
-          
-          <div className="form-row">
-            <div className="input-group">
-              <label>Duration *</label>
-              <div className="duration-input">
-                <input
-                  type="number"
-                  min="1"
-                  max="24"
-                  value={formData.duration}
-                  onChange={(e) => setFormData(prev => ({ 
-                    ...prev, 
-                    duration: parseInt(e.target.value) || 1
-                  }))}
-                />
-                <select
-                  value={formData.durationUnit}
-                  onChange={(e) => setFormData(prev => ({ 
-                    ...prev, 
-                    durationUnit: e.target.value 
-                  }))}
-                >
-                  <option value="minutes">Minutes</option>
-                  <option value="hours">Hours</option>
-                  <option value="days">Days</option>
-                </select>
-              </div>
-            </div>
+      {/* Form Content */}
+      <div className="form-content">
+        <AnimatePresence mode="wait" custom={direction}>
+          <motion.div
+            key={currentStep}
+            custom={direction}
+            variants={stepVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ duration: 0.3 }}
+            className="step-content"
+          >
+            {currentStep === 1 && (
+              <Step1 
+                formData={formData} 
+                setFormData={setFormData} 
+                categories={categories}
+                experienceTypes={experienceTypes}
+              />
+            )}
+            {currentStep === 2 && (
+              <Step2 
+                formData={formData} 
+                setFormData={setFormData}
+                onLocationSelect={handleLocationSelect}
+                showMap={showMap}
+                setShowMap={setShowMap}
+              />
+            )}
+            {currentStep === 3 && (
+              <Step3 
+                formData={formData} 
+                setFormData={setFormData} 
+              />
+            )}
+            {currentStep === 4 && (
+              <Step4 
+                formData={formData} 
+                setFormData={setFormData}
+                amenitiesList={amenitiesList}
+                onAmenityToggle={handleAmenityToggle}
+              />
+            )}
+            {currentStep === 5 && (
+              <Step5 
+                imageUrls={imageUrls}
+                onImageUpload={handleImageUpload}
+                onRemoveImage={handleRemoveImage}
+              />
+            )}
+            {currentStep === 6 && (
+              <Step6 
+                formData={formData} 
+                setFormData={setFormData} 
+              />
+            )}
+            {currentStep === 7 && (
+              <Step7 
+                formData={formData}
+                onPublish={handlePublish}
+                isSubmitting={isSubmitting}
+                points={calculateHostPoints()}
+              />
+            )}
+          </motion.div>
+        </AnimatePresence>
 
-            <div className="input-group">
-              <label>Maximum Group Size *</label>
-              <div className="counter-input">
-                <button
-                  type="button"
-                  onClick={() => setFormData(prev => ({ 
-                    ...prev, 
-                    groupSize: Math.max(1, prev.groupSize - 1) 
-                  }))}
-                  className="counter-btn"
-                >-</button>
-                <span>{formData.groupSize} {formData.groupSize === 1 ? 'guest' : 'guests'}</span>
-                <button
-                  type="button"
-                  onClick={() => setFormData(prev => ({ 
-                    ...prev, 
-                    groupSize: prev.groupSize + 1 
-                  }))}
-                  className="counter-btn"
-                >+</button>
-              </div>
-            </div>
-          </div>
-
-          <div className="input-group">
-            <label>Meeting Point *</label>
-            <input
-              type="text"
-              placeholder="Where will you meet your guests? (Exact address or specific location)"
-              value={formData.meetingPoint}
-              onChange={(e) => setFormData(prev => ({ 
-                ...prev, 
-                meetingPoint: e.target.value 
-              }))}
-            />
-          </div>
-
-          <div className="input-group">
-            <label>Skill Level</label>
-            <div className="skill-level-options">
-              {skillLevels.map(level => (
-                <label key={level.value} className="skill-level-option">
-                  <input
-                    type="radio"
-                    name="skillLevel"
-                    value={level.value}
-                    checked={formData.skillLevel === level.value}
-                    onChange={(e) => setFormData(prev => ({ 
-                      ...prev, 
-                      skillLevel: e.target.value 
-                    }))}
-                  />
-                  <span className="checkmark"></span>
-                  {level.label}
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div className="input-group">
-            <label>What's Included</label>
-            <div className="included-items-grid">
-              {includedItemsList.map(item => (
-                <label key={item} className="included-item-option">
-                  <input
-                    type="checkbox"
-                    checked={formData.includedItems.includes(item)}
-                    onChange={(e) => handleIncludedItemToggle(item)}
-                  />
-                  <span className="checkmark"></span>
-                  {item}
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div className="input-group">
-            <label>Requirements & Restrictions</label>
-            <div className="requirements-grid">
-              {requirementsList.map(req => (
-                <label key={req} className="requirement-option">
-                  <input
-                    type="checkbox"
-                    checked={formData.requirements.includes(req)}
-                    onChange={(e) => handleRequirementToggle(req)}
-                  />
-                  <span className="checkmark"></span>
-                  {req}
-                </label>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="form-section">
-        <h3>Property Images</h3>
-        <div className="image-upload-area">
-          <div className="upload-box">
-            <input
-              type="file"
-              multiple
-              accept="image/*"
-              onChange={handleImageUpload}
-              className="file-input"
-              id="image-upload"
-            />
-            <label htmlFor="image-upload" className="upload-label">
-              <span className="upload-icon">📷</span>
-              <p>Click to upload images</p>
-              <small>Supported: JPG, PNG, WEBP (Max 5MB each)</small>
-            </label>
-          </div>
-          <div className="image-preview-grid">
-            {imageUrls.map((url, index) => (
-              <div key={index} className="image-preview">
-                <img src={url} alt={`Preview ${index + 1}`} />
-                <button 
-                  type="button" 
-                  className="remove-image"
-                  onClick={() => handleRemoveImage(index)}
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-          </div>
-          {imageUrls.length > 0 && (
-            <div className="image-stats">
-              {imageUrls.length} image{imageUrls.length !== 1 ? 's' : ''} uploaded • 
-              {imageUrls.length >= 3 ? ' ✅' : ' ❌'} Minimum 3 images required for bonus points
-            </div>
+        {/* Navigation Buttons */}
+        <div className="navigation-buttons">
+          {currentStep > 1 && (
+            <button className="back-button" onClick={handleBack}>
+              ← Back
+            </button>
+          )}
+          {currentStep < steps.length ? (
+            <button className="next-button" onClick={handleNext}>
+              Next →
+            </button>
+          ) : (
+            <button 
+              className="publish-button" 
+              onClick={handlePublish}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Publishing...' : `Publish Listing (+${calculateHostPoints()} Points)`}
+            </button>
           )}
         </div>
       </div>
+    </div>
+  );
+}
 
-      <div className="form-section">
-        <h3>Location</h3>
+// Step Components
+const Step1 = ({ formData, setFormData, categories, experienceTypes }) => (
+  <div className="step-container">
+    <h2>What kind of place are you listing?</h2>
+    <p className="step-description">Choose a category that best describes your offering</p>
+    
+    <div className="category-grid">
+      {categories.map(cat => (
+        <motion.label 
+          key={cat.value}
+          className={`category-card ${formData.category === cat.value ? 'selected' : ''}`}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+        >
+          <input
+            type="radio"
+            name="category"
+            value={cat.value}
+            checked={formData.category === cat.value}
+            onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+          />
+          <span className="category-icon">{cat.icon}</span>
+          <span className="category-label">{cat.label}</span>
+        </motion.label>
+      ))}
+    </div>
+
+    {formData.category === 'experience' && (
+      <motion.div 
+        className="experience-types"
+        initial={{ opacity: 0, height: 0 }}
+        animate={{ opacity: 1, height: 'auto' }}
+        transition={{ duration: 0.3 }}
+      >
+        <h3>What type of experience?</h3>
+        <div className="experience-grid">
+          {experienceTypes.map(exp => (
+            <label key={exp.value} className="experience-option">
+              <input
+                type="radio"
+                name="experienceType"
+                value={exp.value}
+                checked={formData.experienceType === exp.value}
+                onChange={(e) => setFormData(prev => ({ ...prev, experienceType: e.target.value }))}
+              />
+              <span className="experience-icon">{exp.icon}</span>
+              <span>{exp.label}</span>
+            </label>
+          ))}
+        </div>
+      </motion.div>
+    )}
+  </div>
+);
+
+const Step2 = ({ formData, setFormData, onLocationSelect, showMap, setShowMap }) => (
+  <div className="step-container">
+    <h2>Where's your place located?</h2>
+    <p className="step-description">Help guests find your place by adding the exact location</p>
+
+    {!showMap ? (
+      <div className="location-form">
         <div className="input-group">
           <label>Address *</label>
           <input
             type="text"
-            placeholder="Full address"
+            placeholder="Enter your full address"
             value={formData.location.address}
             onChange={(e) => setFormData(prev => ({
               ...prev,
@@ -586,7 +453,7 @@ function PropertyListing({ onSave, initialData = null }) {
             }))}
           />
         </div>
-        
+
         <div className="location-row">
           <div className="input-group">
             <label>City *</label>
@@ -600,338 +467,325 @@ function PropertyListing({ onSave, initialData = null }) {
               }))}
             />
           </div>
-          
+
           <div className="input-group">
-            <label>Country *</label>
+            <label>Province *</label>
             <input
               type="text"
-              placeholder="Country"
-              value={formData.location.country}
+              placeholder="Province/State"
+              value={formData.location.province}
               onChange={(e) => setFormData(prev => ({
                 ...prev,
-                location: { ...prev.location, country: e.target.value }
+                location: { ...prev.location, province: e.target.value }
               }))}
             />
           </div>
         </div>
-      </div>
 
-      {formData.category !== 'experience' && (
-        <div className="form-section">
-          <h3>Property Details</h3>
-          <div className="details-grid">
-            <div className="detail-item">
-              <label>Max Guests</label>
-              <div className="counter-input">
-                <button
-                  type="button"
-                  onClick={() => setFormData(prev => ({ ...prev, maxGuests: Math.max(1, prev.maxGuests - 1) }))}
-                  className="counter-btn"
-                >-</button>
-                <span>{formData.maxGuests}</span>
-                <button
-                  type="button"
-                  onClick={() => setFormData(prev => ({ ...prev, maxGuests: prev.maxGuests + 1 }))}
-                  className="counter-btn"
-                >+</button>
-              </div>
-            </div>
-            
-            <div className="detail-item">
-              <label>Bedrooms</label>
-              <div className="counter-input">
-                <button
-                  type="button"
-                  onClick={() => setFormData(prev => ({ ...prev, bedrooms: Math.max(0, prev.bedrooms - 1) }))}
-                  className="counter-btn"
-                >-</button>
-                <span>{formData.bedrooms}</span>
-                <button
-                  type="button"
-                  onClick={() => setFormData(prev => ({ ...prev, bedrooms: prev.bedrooms + 1 }))}
-                  className="counter-btn"
-                >+</button>
-              </div>
-            </div>
-            
-            <div className="detail-item">
-              <label>Beds</label>
-              <div className="counter-input">
-                <button
-                  type="button"
-                  onClick={() => setFormData(prev => ({ ...prev, beds: Math.max(0, prev.beds - 1) }))}
-                  className="counter-btn"
-                >-</button>
-                <span>{formData.beds}</span>
-                <button
-                  type="button"
-                  onClick={() => setFormData(prev => ({ ...prev, beds: prev.beds + 1 }))}
-                  className="counter-btn"
-                >+</button>
-              </div>
-            </div>
-            
-            <div className="detail-item">
-              <label>Bathrooms</label>
-              <div className="counter-input">
-                <button
-                  type="button"
-                  onClick={() => setFormData(prev => ({ ...prev, bathrooms: Math.max(0, prev.bathrooms - 0.5) }))}
-                  className="counter-btn"
-                >-</button>
-                <span>{formData.bathrooms}</span>
-                <button
-                  type="button"
-                  onClick={() => setFormData(prev => ({ ...prev, bathrooms: prev.bathrooms + 0.5 }))}
-                  className="counter-btn"
-                >+</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="form-section">
-        <h3>Pricing & Offers</h3>
-        <div className="pricing-row">
-          <div className="input-group">
-            <label>Base Price per {formData.category === 'experience' ? 'Person' : 'Night'} ($) *</label>
-            <input
-              type="number"
-              placeholder="0.00"
-              min="0"
-              step="0.01"
-              value={formData.price}
-              onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
-            />
-          </div>
-          
-          <div className="input-group">
-            <label>Discount (%)</label>
-            <input
-              type="number"
-              placeholder="0"
-              min="0"
-              max="100"
-              value={formData.discount}
-              onChange={(e) => setFormData(prev => ({ ...prev, discount: e.target.value }))}
-            />
-          </div>
-        </div>
-        
         <div className="input-group">
-          <label>Promo Code (Optional)</label>
+          <label>Country *</label>
           <input
             type="text"
-            placeholder="e.g., SUMMER2024"
-            value={formData.promoCode}
-            onChange={(e) => setFormData(prev => ({ ...prev, promoCode: e.target.value }))}
+            placeholder="Country"
+            value={formData.location.country}
+            onChange={(e) => setFormData(prev => ({
+              ...prev,
+              location: { ...prev.location, country: e.target.value }
+            }))}
+          />
+        </div>
+
+        <button 
+          className="map-button"
+          onClick={() => setShowMap(true)}
+        >
+          📍 Pick Location on Map
+        </button>
+
+        {formData.location.coordinates.lat !== 0 && (
+          <div className="coordinates-display">
+            <small>Coordinates: {formData.location.coordinates.lat.toFixed(6)}, {formData.location.coordinates.lng.toFixed(6)}</small>
+          </div>
+        )}
+      </div>
+    ) : (
+      <MapIntegration
+        onLocationSelect={onLocationSelect}
+        initialLocation={formData.location}
+      />
+    )}
+  </div>
+);
+
+const Step3 = ({ formData, setFormData }) => (
+  <div className="step-container">
+    <h2>Describe your place</h2>
+    <p className="step-description">Share what makes your place special</p>
+
+    <div className="input-group">
+      <label>Title *</label>
+      <input
+        type="text"
+        placeholder="Catchy title for your listing"
+        value={formData.title}
+        onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+        maxLength="100"
+      />
+      <div className="char-counter">{formData.title.length}/100</div>
+    </div>
+
+    <div className="input-group">
+      <label>Description *</label>
+      <textarea
+        placeholder="Describe your place in detail..."
+        value={formData.description}
+        onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+        rows="6"
+        maxLength="1000"
+      />
+      <div className="char-counter">{formData.description.length}/1000</div>
+    </div>
+
+    {formData.category === 'home' && (
+      <div className="details-grid">
+        <div className="detail-item">
+          <label>Guests</label>
+          <CounterInput
+            value={formData.maxGuests}
+            onChange={(value) => setFormData(prev => ({ ...prev, maxGuests: value }))}
+            min={1}
+            max={20}
+          />
+        </div>
+        <div className="detail-item">
+          <label>Bedrooms</label>
+          <CounterInput
+            value={formData.bedrooms}
+            onChange={(value) => setFormData(prev => ({ ...prev, bedrooms: value }))}
+            min={0}
+            max={20}
+          />
+        </div>
+        <div className="detail-item">
+          <label>Beds</label>
+          <CounterInput
+            value={formData.beds}
+            onChange={(value) => setFormData(prev => ({ ...prev, beds: value }))}
+            min={0}
+            max={20}
+          />
+        </div>
+        <div className="detail-item">
+          <label>Bathrooms</label>
+          <CounterInput
+            value={formData.bathrooms}
+            onChange={(value) => setFormData(prev => ({ ...prev, bathrooms: value }))}
+            min={0}
+            max={10}
+            step={0.5}
+          />
+        </div>
+      </div>
+    )}
+  </div>
+);
+
+const Step4 = ({ formData, setFormData, amenitiesList, onAmenityToggle }) => (
+  <div className="step-container">
+    <h2>What amenities do you offer?</h2>
+    <p className="step-description">Select all that apply to your place</p>
+
+    <div className="amenities-grid">
+      {amenitiesList.map(amenity => (
+        <motion.label 
+          key={amenity}
+          className={`amenity-option ${formData.amenities.includes(amenity) ? 'selected' : ''}`}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+        >
+          <input
+            type="checkbox"
+            checked={formData.amenities.includes(amenity)}
+            onChange={() => onAmenityToggle(amenity)}
+          />
+          <span className="checkmark"></span>
+          <span>{amenity}</span>
+        </motion.label>
+      ))}
+    </div>
+  </div>
+);
+
+const Step5 = ({ imageUrls, onImageUpload, onRemoveImage }) => (
+  <div className="step-container">
+    <h2>Add photos of your place</h2>
+    <p className="step-description">Upload at least 3 photos to showcase your space</p>
+
+    <div className="image-upload-area">
+      <div className="upload-box">
+        <input
+          type="file"
+          multiple
+          accept="image/*"
+          onChange={onImageUpload}
+          className="file-input"
+          id="image-upload"
+        />
+        <label htmlFor="image-upload" className="upload-label">
+          <span className="upload-icon">📷</span>
+          <p>Click to upload images</p>
+          <small>Supported: JPG, PNG, WEBP (Max 5MB each)</small>
+        </label>
+      </div>
+
+      <div className="image-preview-grid">
+        {imageUrls.map((url, index) => (
+          <motion.div 
+            key={index}
+            className="image-preview"
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: index * 0.1 }}
+          >
+            <img src={url} alt={`Preview ${index + 1}`} />
+            <button 
+              type="button" 
+              className="remove-image"
+              onClick={() => onRemoveImage(index)}
+            >
+              ×
+            </button>
+          </motion.div>
+        ))}
+      </div>
+
+      {imageUrls.length > 0 && (
+        <div className={`image-stats ${imageUrls.length >= 3 ? 'success' : 'warning'}`}>
+          {imageUrls.length} image{imageUrls.length !== 1 ? 's' : ''} uploaded • 
+          {imageUrls.length >= 3 ? ' ✅ Ready to publish!' : ' ❌ Add more photos'}
+        </div>
+      )}
+    </div>
+  </div>
+);
+
+const Step6 = ({ formData, setFormData }) => (
+  <div className="step-container">
+    <h2>Set your price</h2>
+    <p className="step-description">How much will you charge per night?</p>
+
+    <div className="pricing-section">
+      <div className="input-group">
+        <label>
+          Base Price per {
+            formData.category === 'experience' ? 'Person' : 
+            formData.category === 'service' ? 'Session' : 
+            'Night'
+          } (₱) *
+        </label>
+        <div className="price-input">
+          <span className="currency-symbol">₱</span>
+          <input
+            type="number"
+            placeholder="0.00"
+            min="0"
+            step="0.01"
+            value={formData.price}
+            onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
           />
         </div>
       </div>
 
-      {formData.category !== 'experience' && (
-        <div className="form-section">
-          <h3>Amenities</h3>
-          <div className="amenities-grid">
-            {amenitiesList.map(amenity => (
-              <label key={amenity} className="amenity-option">
-                <input
-                  type="checkbox"
-                  checked={formData.amenities.includes(amenity)}
-                  onChange={() => handleAmenityToggle(amenity)}
-                />
-                <span className="checkmark"></span>
-                {amenity}
-              </label>
-            ))}
-          </div>
-          <div className="amenities-stats">
-            {formData.amenities.length} amenit{formData.amenities.length !== 1 ? 'ies' : 'y'} selected •
-            {formData.amenities.length >= 5 ? ' ✅' : ' ❌'} Minimum 5 amenities for bonus points
-          </div>
-        </div>
-      )}
-
-      <div className="form-section">
-        <h3>Policies & Rules</h3>
-        
-        <div className="input-group">
-          <label>Cancellation Policy *</label>
-          <select
-            value={formData.cancellationPolicy}
-            onChange={(e) => setFormData(prev => ({ ...prev, cancellationPolicy: e.target.value }))}
-          >
-            {cancellationPolicies.map(policy => (
-              <option key={policy.value} value={policy.value}>
-                {policy.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {formData.category !== 'experience' && (
-          <div className="input-group">
-            <label>House Rules</label>
-            <div className="rules-grid">
-              {houseRulesList.map(rule => (
-                <label key={rule} className="rule-option">
-                  <input
-                    type="checkbox"
-                    checked={formData.houseRules.includes(rule)}
-                    onChange={() => handleHouseRuleToggle(rule)}
-                  />
-                  <span className="checkmark"></span>
-                  {rule}
-                </label>
-              ))}
-            </div>
+      <div className="input-group">
+        <label>Discount (%)</label>
+        <input
+          type="number"
+          placeholder="0"
+          min="0"
+          max="100"
+          value={formData.discount}
+          onChange={(e) => setFormData(prev => ({ ...prev, discount: e.target.value }))}
+        />
+        {formData.discount > 0 && (
+          <div className="discount-preview">
+            Original: ₱{formData.price} → Discounted: ₱{(formData.price * (1 - formData.discount / 100)).toFixed(2)}
           </div>
         )}
-
-        {formData.category !== 'experience' && (
-          <div className="form-row">
-            <div className="input-group">
-              <label>Check-in Time</label>
-              <select
-                value={formData.checkInTime}
-                onChange={(e) => setFormData(prev => ({ ...prev, checkInTime: e.target.value }))}
-              >
-                <option value="14:00">2:00 PM</option>
-                <option value="15:00">3:00 PM</option>
-                <option value="16:00">4:00 PM</option>
-                <option value="17:00">5:00 PM</option>
-              </select>
-            </div>
-
-            <div className="input-group">
-              <label>Check-out Time</label>
-              <select
-                value={formData.checkOutTime}
-                onChange={(e) => setFormData(prev => ({ ...prev, checkOutTime: e.target.value }))}
-              >
-                <option value="10:00">10:00 AM</option>
-                <option value="11:00">11:00 AM</option>
-                <option value="12:00">12:00 PM</option>
-              </select>
-            </div>
-          </div>
-        )}
-
-        <div className="form-row">
-          <div className="input-group">
-            <label>Minimum Stay (nights)</label>
-            <input
-              type="number"
-              min="1"
-              max="30"
-              value={formData.minimumStay}
-              onChange={(e) => setFormData(prev => ({ ...prev, minimumStay: e.target.value }))}
-            />
-          </div>
-
-          <div className="input-group">
-            <label>Maximum Stay (nights)</label>
-            <input
-              type="number"
-              min="1"
-              max="365"
-              value={formData.maximumStay}
-              onChange={(e) => setFormData(prev => ({ ...prev, maximumStay: e.target.value }))}
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="form-actions">
-        <button 
-          type="button" 
-          className="save-draft-btn"
-          onClick={handleSaveDraft}
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? 'Saving...' : 'Save Draft'}
-        </button>
-        
-        <button 
-          type="button" 
-          className="publish-btn"
-          onClick={handlePublish}
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? 'Publishing...' : `Publish Listing (+${calculateHostPoints()} Points)`}
-        </button>
       </div>
     </div>
-  );
-}
+  </div>
+);
 
-// Points Display Component
-function PointsDisplay({ points, earnedPoints = 0, potentialPoints = 0 }) {
-  const levels = [
-    { min: 0, max: 100, name: 'Bronze', color: '#cd7f32' },
-    { min: 101, max: 500, name: 'Silver', color: '#c0c0c0' },
-    { min: 501, max: 1000, name: 'Gold', color: '#ffd700' },
-    { min: 1001, max: Infinity, name: 'Platinum', color: '#e5e4e2' }
-  ];
+const Step7 = ({ formData, onPublish, isSubmitting, points }) => (
+  <div className="step-container">
+    <motion.div 
+      className="publish-summary"
+      initial={{ scale: 0.9, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={{ duration: 0.5 }}
+    >
+      <div className="summary-header">
+        <h2>Ready to publish! 🎉</h2>
+        <p>Review your listing details before publishing</p>
+      </div>
 
-  const currentLevel = levels.find(level => points >= level.min && points <= level.max);
-  const nextLevel = levels.find(level => points < level.max);
-  const progress = nextLevel ? ((points - currentLevel.min) / (nextLevel.max - currentLevel.min)) * 100 : 100;
+      <div className="summary-grid">
+        <div className="summary-item">
+          <span className="summary-label">Category</span>
+          <span className="summary-value">{formData.category}</span>
+        </div>
+        <div className="summary-item">
+          <span className="summary-label">Title</span>
+          <span className="summary-value">{formData.title}</span>
+        </div>
+        <div className="summary-item">
+          <span className="summary-label">Location</span>
+          <span className="summary-value">{formData.location.address}</span>
+        </div>
+        <div className="summary-item">
+          <span className="summary-label">Price</span>
+          <span className="summary-value">₱{formData.price} per night</span>
+        </div>
+        <div className="summary-item">
+          <span className="summary-label">Photos</span>
+          <span className="summary-value">{formData.images.length} uploaded</span>
+        </div>
+        <div className="summary-item">
+          <span className="summary-label">Amenities</span>
+          <span className="summary-value">{formData.amenities.length} selected</span>
+        </div>
+      </div>
 
-  return (
-    <div className="points-display">
-      <div className="points-card">
-        <div className="points-header">
+      <div className="points-reward">
+        <div className="points-card">
           <span className="points-icon">⭐</span>
           <div className="points-info">
-            <h4>{points} Host Points</h4>
-            <p>Level: <span style={{ color: currentLevel.color }}>{currentLevel.name}</span></p>
+            <h4>+{points} Host Points</h4>
+            <p>You'll earn points for completing your listing!</p>
           </div>
-        </div>
-        
-        {earnedPoints > 0 && (
-          <div className="points-earned">
-            +{earnedPoints} points earned! 🎉
-          </div>
-        )}
-        
-        {potentialPoints > 0 && (
-          <div className="potential-points">
-            Potential points from this listing: <strong>+{potentialPoints}</strong>
-          </div>
-        )}
-        
-        <div className="level-progress">
-          <div className="progress-bar">
-            <div 
-              className="progress-fill" 
-              style={{ 
-                width: `${Math.min(progress, 100)}%`,
-                backgroundColor: currentLevel.color
-              }}
-            ></div>
-          </div>
-          <div className="progress-text">
-            {points} / {nextLevel ? nextLevel.max : 'Max'} points
-            {nextLevel && ` to ${nextLevel.name}`}
-          </div>
-        </div>
-        
-        <div className="points-breakdown">
-          <h5>How to earn more points:</h5>
-          <ul>
-            <li>✅ Complete listing details: +10 points</li>
-            <li>📸 Add 3+ photos: +20 points</li>
-            <li>🏠 List 5+ amenities: +15 points</li>
-            <li>📝 Write detailed description: +10 points</li>
-            <li>⭐ Get 5-star review: +50 points</li>
-            <li>📅 Complete booking: +25 points</li>
-          </ul>
         </div>
       </div>
-    </div>
-  );
-}
+    </motion.div>
+  </div>
+);
+
+// Counter Input Component
+const CounterInput = ({ value, onChange, min, max, step = 1 }) => (
+  <div className="counter-input">
+    <button
+      type="button"
+      onClick={() => onChange(Math.max(min, value - step))}
+      className="counter-btn"
+      disabled={value <= min}
+    >-</button>
+    <span className="counter-value">{value}</span>
+    <button
+      type="button"
+      onClick={() => onChange(Math.min(max, value + step))}
+      className="counter-btn"
+      disabled={value >= max}
+    >+</button>
+  </div>
+);
 
 export default PropertyListing;
