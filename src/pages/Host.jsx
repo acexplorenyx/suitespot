@@ -9,6 +9,7 @@ import MessagesManager from '../components/host/MessagesManager';
 import EarningsDashboard from '../components/host/EarningsDashboard';
 import AccountSettings from '../components/host/AccountSettings';
 import HelpSupport from '../components/host/HelpSupport';
+import logoImage from '../../public/logo.ico';
 import '../styles/hoststyle.css';
 
 function HostDashboard() {
@@ -262,7 +263,7 @@ function HostDashboard() {
         <div className="nav-container">
           {/* Logo */}
           <div className="nav-logo" onClick={() => navigate('/host')}>
-            <span className="logo-icon">🏠</span>
+            <span className="logo-icon"><img src={logoImage} alt="SuiteSpot Logo" className="logo-img" /></span>
             <span className="logo-text">SuiteSpot</span>
             <span className="logo-badge">Host</span>
           </div>

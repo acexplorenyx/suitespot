@@ -45,6 +45,10 @@
 .logo-icon {
   font-size: 1.5rem;
 }
+.logo-img {
+  width: 60px;
+  height: 60px;
+}
 
 .logo-text {
   font-size: 1.25rem;
