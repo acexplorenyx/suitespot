@@ -9,7 +9,7 @@ import MessagesManager from '../components/host/MessagesManager';
 import EarningsDashboard from '../components/host/EarningsDashboard';
 import AccountSettings from '../components/host/AccountSettings';
 import HelpSupport from '../components/host/HelpSupport';
-import logoImage from '../../public/logo.ico';
+import logoImage from '/logo.ico';
 import '../styles/hoststyle.css';
 
 function HostDashboard() {
@@ -461,7 +461,6 @@ function HostDashboard() {
                     </button>
                   </div>
 
-                  {/* Divider */}
                   <div className="dropdown-divider"></div>
 
                   {/* Help & Support */}

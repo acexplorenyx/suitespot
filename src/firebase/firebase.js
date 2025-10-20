@@ -3,12 +3,12 @@ import { getAuth, GoogleAuthProvider, sendEmailVerification } from 'firebase/aut
 import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDeVfwiJ3s3TzBTMSWkd4nw3bKimQsPdwI",
-  authDomain: "it305webproject-e4cc2.firebaseapp.com",
-  projectId: "it305webproject-e4cc2",
-  storageBucket: "it305webproject-e4cc2.firebasestorage.app",
-  messagingSenderId: "109202298501",
-  appId: "1:109202298501:web:016d80cce2182183e8bbec",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
   measurementId: "G-VQ604ND8TC"
 };
 

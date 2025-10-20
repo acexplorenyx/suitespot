@@ -24,7 +24,7 @@
   max-width: 1400px;
   margin: 0 auto;
   padding: 0 2rem;
-  height: 85px;
+  height: 90px;
 }
 
 /* Logo */
@@ -53,7 +53,7 @@
 .logo-text {
   font-size: 1.25rem;
   font-weight: 700;
-  background: linear-gradient(135deg, #0ecfb8 0%, #06b6d4 100%);
+  background: linear-gradient(135deg, #00bfa6, #0ecfb8);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;

@@ -1,9 +1,9 @@
-// PropertyListing.jsx
+// PropertyListing.jsx - Fixed Design Issues
 import React, { useState, useEffect } from 'react';
 import { collection, addDoc, updateDoc, doc, increment } from 'firebase/firestore';
 import { db, auth } from '../../firebase/firebase';
 import { motion, AnimatePresence } from 'framer-motion';
-import MapIntegration from '../common/MapIntegration';
+import LeafletMapIntegration from '../common/MapIntegration';
 import '../../styles/propertylistingstyle.css';
 
 function PropertyListing({ onSave, initialData = null }) {
@@ -11,8 +11,11 @@ function PropertyListing({ onSave, initialData = null }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [direction, setDirection] = useState(0);
   const [imageUrls, setImageUrls] = useState(initialData?.images || []);
+  const [imageFiles, setImageFiles] = useState([]);
   const [earnedPoints, setEarnedPoints] = useState(0);
   const [showMap, setShowMap] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({});
+  const [uploadingImages, setUploadingImages] = useState([]);
 
   const [formData, setFormData] = useState({
     title: initialData?.title || '',
@@ -22,12 +25,12 @@ function PropertyListing({ onSave, initialData = null }) {
     price: initialData?.price || '',
     discount: initialData?.discount || 0,
     promoCode: initialData?.promoCode || '',
-    location: initialData?.location || { 
-      address: '', 
-      city: '', 
-      province: '', 
-      country: '', 
-      coordinates: { lat: 0, lng: 0 } 
+    location: initialData?.location || {
+      address: '',
+      city: '',
+      province: '',
+      country: '',
+      coordinates: { lat: 0, lng: 0 }
     },
     amenities: initialData?.amenities || [],
     images: initialData?.images || [],
@@ -89,6 +92,131 @@ function PropertyListing({ onSave, initialData = null }) {
     'EV Charger', 'Gym', 'Breakfast', 'Smoking Allowed', 'Pets Allowed'
   ];
 
+  // Cloudinary Upload Function
+  const uploadToCloudinary = async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', process.env.REACT_APP_CLOUDINARY_UPLOAD_PRESET);
+    formData.append('folder', 'airbnb-clone');
+
+    try {
+      setUploadProgress(prev => ({ ...prev, [file.name]: 0 }));
+      setUploadingImages(prev => [...prev, file.name]);
+
+      // Simulate progress for better UX
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => {
+          const currentProgress = prev[file.name] || 0;
+          if (currentProgress < 90) {
+            return { ...prev, [file.name]: currentProgress + 10 };
+          }
+          return prev;
+        });
+      }, 200);
+
+      const response = await fetch(
+        `https://api.cloudinary.com/v1_1/${process.env.REACT_APP_CLOUDINARY_CLOUD_NAME}/image/upload`,
+        {
+          method: 'POST',
+          body: formData,
+        }
+      );
+
+      clearInterval(progressInterval);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error?.message || 'Upload failed');
+      }
+
+      const data = await response.json();
+
+      setUploadProgress(prev => ({ ...prev, [file.name]: 100 }));
+
+      // Update formData with Cloudinary URL
+      setFormData(prev => ({
+        ...prev,
+        images: [...prev.images, data.secure_url]
+      }));
+
+      // Remove from uploading list after a delay
+      setTimeout(() => {
+        setUploadingImages(prev => prev.filter(name => name !== file.name));
+        setUploadProgress(prev => {
+          const newProgress = { ...prev };
+          delete newProgress[file.name];
+          return newProgress;
+        });
+      }, 1000);
+
+      return data.secure_url;
+
+    } catch (error) {
+      console.error('Cloudinary upload error:', error);
+      setUploadingImages(prev => prev.filter(name => name !== file.name));
+      setUploadProgress(prev => {
+        const newProgress = { ...prev };
+        delete newProgress[file.name];
+        return newProgress;
+      });
+      throw error;
+    }
+  };
+
+  // Enhanced image upload handler
+  const handleImageUpload = async (e) => {
+    const files = Array.from(e.target.files);
+
+    if (files.length === 0) return;
+
+    // Validate file sizes (max 5MB)
+    const oversizedFiles = files.filter(file => file.size > 5 * 1024 * 1024);
+    if (oversizedFiles.length > 0) {
+      alert('Some files are too large. Please select images under 5MB.');
+      return;
+    }
+
+    // Create preview URLs immediately
+    const newImageUrls = files.map(file => URL.createObjectURL(file));
+    setImageUrls(prev => [...prev, ...newImageUrls]);
+    setImageFiles(prev => [...prev, ...files]);
+
+    // Upload to Cloudinary in background
+    try {
+      for (const file of files) {
+        await uploadToCloudinary(file);
+      }
+    } catch (error) {
+      console.error('Upload failed:', error);
+      alert('Some images failed to upload. Please try again.');
+    }
+  };
+
+  const handleRemoveImage = (index) => {
+    const newImages = imageUrls.filter((_, i) => i !== index);
+    const newFiles = imageFiles.filter((_, i) => i !== index);
+    const removedFile = imageFiles[index];
+
+    setImageUrls(newImages);
+    setImageFiles(newFiles);
+
+    // Remove from formData images array
+    setFormData(prev => ({
+      ...prev,
+      images: prev.images.filter((_, i) => i !== index)
+    }));
+
+    // Clean up progress tracking
+    if (removedFile) {
+      setUploadingImages(prev => prev.filter(name => name !== removedFile.name));
+      setUploadProgress(prev => {
+        const newProgress = { ...prev };
+        delete newProgress[removedFile.name];
+        return newProgress;
+      });
+    }
+  };
+
   const handleNext = () => {
     if (validateStep(currentStep)) {
       setDirection(1);
@@ -149,19 +277,6 @@ function PropertyListing({ onSave, initialData = null }) {
     setShowMap(false);
   };
 
-  const handleImageUpload = (e) => {
-    const files = Array.from(e.target.files);
-    const newImageUrls = files.map(file => URL.createObjectURL(file));
-    setImageUrls(prev => [...prev, ...newImageUrls]);
-    setFormData(prev => ({ ...prev, images: [...prev.images, ...newImageUrls] }));
-  };
-
-  const handleRemoveImage = (index) => {
-    const newImages = imageUrls.filter((_, i) => i !== index);
-    setImageUrls(newImages);
-    setFormData(prev => ({ ...prev, images: newImages }));
-  };
-
   const handleAmenityToggle = (amenity) => {
     setFormData(prev => ({
       ...prev,
@@ -187,15 +302,27 @@ function PropertyListing({ onSave, initialData = null }) {
   const handlePublish = async () => {
     if (!validateForm()) return;
 
+    // Check if images are still uploading
+    if (uploadingImages.length > 0) {
+      alert('Please wait for all images to finish uploading before publishing.');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const user = auth.currentUser;
+
+      if (!user) {
+        alert('Please log in to create a listing');
+        return;
+      }
+
       const pointsEarned = calculateHostPoints();
-      
+
       const propertyData = {
         ...formData,
         hostId: user.uid,
-        hostName: user.displayName,
+        hostName: user.displayName || 'Anonymous Host',
         hostEmail: user.email,
         status: 'published',
         publishedAt: new Date(),
@@ -206,8 +333,30 @@ function PropertyListing({ onSave, initialData = null }) {
         views: 0,
         bookingsCount: 0,
         rating: 0,
-        reviewCount: 0
+        reviewCount: 0,
+        // Ensure proper data types
+        location: {
+          ...formData.location,
+          coordinates: {
+            lat: parseFloat(formData.location.coordinates.lat) || 0,
+            lng: parseFloat(formData.location.coordinates.lng) || 0
+          }
+        },
+        price: parseFloat(formData.price) || 0,
+        discount: parseFloat(formData.discount) || 0,
+        maxGuests: parseInt(formData.maxGuests) || 1,
+        bedrooms: parseInt(formData.bedrooms) || 1,
+        beds: parseInt(formData.beds) || 1,
+        bathrooms: parseFloat(formData.bathrooms) || 1,
+        duration: parseInt(formData.duration) || 2,
+        groupSize: parseInt(formData.groupSize) || 10,
+        serviceArea: parseInt(formData.serviceArea) || 0,
+        travelFee: parseFloat(formData.travelFee) || 0,
+        minimumStay: parseInt(formData.minimumStay) || 1,
+        maximumStay: parseInt(formData.maximumStay) || 30
       };
+
+      console.log('Saving property data:', propertyData);
 
       let result;
       if (initialData?.id) {
@@ -217,19 +366,27 @@ function PropertyListing({ onSave, initialData = null }) {
         result = await addDoc(collection(db, 'properties'), propertyData);
       }
 
-      const userRef = doc(db, 'users', user.uid);
-      await updateDoc(userRef, {
-        totalPoints: increment(pointsEarned),
-        lastPointsEarned: pointsEarned,
-        lastPointsActivity: new Date()
-      });
+      // Update user points
+      try {
+        const userRef = doc(db, 'users', user.uid);
+        await updateDoc(userRef, {
+          totalPoints: increment(pointsEarned),
+          lastPointsEarned: pointsEarned,
+          lastPointsActivity: new Date()
+        });
+      } catch (userError) {
+        console.warn('Could not update user points:', userError);
+        // Continue anyway - points update is secondary
+      }
 
+      setEarnedPoints(pointsEarned);
       alert(`Listing published successfully! +${pointsEarned} Points! 🎉`);
+
       if (onSave) onSave(result.id);
-      
+
     } catch (error) {
       console.error('Error publishing property:', error);
-      alert('Error publishing property. Please try again.');
+      alert(`Error publishing property: ${error.message}. Please try again.`);
     } finally {
       setIsSubmitting(false);
     }
@@ -237,11 +394,19 @@ function PropertyListing({ onSave, initialData = null }) {
 
   const validateForm = () => {
     const errors = [];
-    if (!formData.title.trim()) errors.push('Title is required');
-    if (!formData.description.trim()) errors.push('Description is required');
+
+    if (!formData.title?.trim()) errors.push('Title is required');
+    if (!formData.description?.trim()) errors.push('Description is required');
     if (!formData.price || formData.price <= 0) errors.push('Valid price is required');
-    if (!formData.location.address.trim()) errors.push('Address is required');
+    if (!formData.location?.address?.trim()) errors.push('Address is required');
     if (formData.images.length === 0) errors.push('At least one image is required');
+
+    // Validate location coordinates
+    if (!formData.location.coordinates ||
+      formData.location.coordinates.lat === 0 ||
+      formData.location.coordinates.lng === 0) {
+      errors.push('Please set a location on the map');
+    }
 
     if (errors.length > 0) {
       alert('Please fix the following errors:\n' + errors.join('\n'));
@@ -265,9 +430,19 @@ function PropertyListing({ onSave, initialData = null }) {
     })
   };
 
+  // Clean up object URLs on unmount
+  useEffect(() => {
+    return () => {
+      imageUrls.forEach(url => {
+        if (url.startsWith('blob:')) {
+          URL.revokeObjectURL(url);
+        }
+      });
+    };
+  }, []);
+
   return (
     <div className="property-listing-wizard">
-      {/* Progress Bar */}
       <div className="progress-container">
         <div className="progress-steps">
           {steps.map((step, index) => (
@@ -285,6 +460,16 @@ function PropertyListing({ onSave, initialData = null }) {
         </div>
       </div>
 
+      {/* Upload Status */}
+      {uploadingImages.length > 0 && (
+        <div className="upload-status">
+          <div className="upload-status-content">
+            <span className="upload-spinner">⏳</span>
+            <span>Uploading {uploadingImages.length} image(s)...</span>
+          </div>
+        </div>
+      )}
+
       {/* Form Content */}
       <div className="form-content">
         <AnimatePresence mode="wait" custom={direction}>
@@ -299,16 +484,16 @@ function PropertyListing({ onSave, initialData = null }) {
             className="step-content"
           >
             {currentStep === 1 && (
-              <Step1 
-                formData={formData} 
-                setFormData={setFormData} 
+              <Step1
+                formData={formData}
+                setFormData={setFormData}
                 categories={categories}
                 experienceTypes={experienceTypes}
               />
             )}
             {currentStep === 2 && (
-              <Step2 
-                formData={formData} 
+              <Step2
+                formData={formData}
                 setFormData={setFormData}
                 onLocationSelect={handleLocationSelect}
                 showMap={showMap}
@@ -316,38 +501,43 @@ function PropertyListing({ onSave, initialData = null }) {
               />
             )}
             {currentStep === 3 && (
-              <Step3 
-                formData={formData} 
-                setFormData={setFormData} 
+              <Step3
+                formData={formData}
+                setFormData={setFormData}
               />
             )}
             {currentStep === 4 && (
-              <Step4 
-                formData={formData} 
+              <Step4
+                formData={formData}
                 setFormData={setFormData}
                 amenitiesList={amenitiesList}
                 onAmenityToggle={handleAmenityToggle}
               />
             )}
             {currentStep === 5 && (
-              <Step5 
+              <Step5
                 imageUrls={imageUrls}
                 onImageUpload={handleImageUpload}
                 onRemoveImage={handleRemoveImage}
+                uploadProgress={uploadProgress}
+                uploadingImages={uploadingImages}
+                isSubmitting={isSubmitting}
               />
             )}
             {currentStep === 6 && (
-              <Step6 
-                formData={formData} 
-                setFormData={setFormData} 
+              <Step6
+                formData={formData}
+                setFormData={setFormData}
               />
             )}
             {currentStep === 7 && (
-              <Step7 
+              <Step7
                 formData={formData}
                 onPublish={handlePublish}
                 isSubmitting={isSubmitting}
                 points={calculateHostPoints()}
+                earnedPoints={earnedPoints}
+                uploadingImages={uploadingImages}
               />
             )}
           </motion.div>
@@ -356,21 +546,31 @@ function PropertyListing({ onSave, initialData = null }) {
         {/* Navigation Buttons */}
         <div className="navigation-buttons">
           {currentStep > 1 && (
-            <button className="back-button" onClick={handleBack}>
+            <button
+              className="back-button"
+              onClick={handleBack}
+              disabled={isSubmitting}
+            >
               ← Back
             </button>
           )}
           {currentStep < steps.length ? (
-            <button className="next-button" onClick={handleNext}>
+            <button
+              className="next-button"
+              onClick={handleNext}
+              disabled={isSubmitting}
+            >
               Next →
             </button>
           ) : (
-            <button 
-              className="publish-button" 
+            <button
+              className="publish-button"
               onClick={handlePublish}
-              disabled={isSubmitting}
+              disabled={isSubmitting || uploadingImages.length > 0}
             >
-              {isSubmitting ? 'Publishing...' : `Publish Listing (+${calculateHostPoints()} Points)`}
+              {isSubmitting ? 'Publishing...' :
+                uploadingImages.length > 0 ? 'Uploading Images...' :
+                  `Publish Listing (+${calculateHostPoints()} Points)`}
             </button>
           )}
         </div>
@@ -384,10 +584,10 @@ const Step1 = ({ formData, setFormData, categories, experienceTypes }) => (
   <div className="step-container">
     <h2>What kind of place are you listing?</h2>
     <p className="step-description">Choose a category that best describes your offering</p>
-    
+
     <div className="category-grid">
       {categories.map(cat => (
-        <motion.label 
+        <motion.label
           key={cat.value}
           className={`category-card ${formData.category === cat.value ? 'selected' : ''}`}
           whileHover={{ scale: 1.02 }}
@@ -407,7 +607,7 @@ const Step1 = ({ formData, setFormData, categories, experienceTypes }) => (
     </div>
 
     {formData.category === 'experience' && (
-      <motion.div 
+      <motion.div
         className="experience-types"
         initial={{ opacity: 0, height: 0 }}
         animate={{ opacity: 1, height: 'auto' }}
@@ -495,7 +695,7 @@ const Step2 = ({ formData, setFormData, onLocationSelect, showMap, setShowMap })
           />
         </div>
 
-        <button 
+        <button
           className="map-button"
           onClick={() => setShowMap(true)}
         >
@@ -509,7 +709,7 @@ const Step2 = ({ formData, setFormData, onLocationSelect, showMap, setShowMap })
         )}
       </div>
     ) : (
-      <MapIntegration
+      <LeafletMapIntegration
         onLocationSelect={onLocationSelect}
         initialLocation={formData.location}
       />
@@ -597,7 +797,7 @@ const Step4 = ({ formData, setFormData, amenitiesList, onAmenityToggle }) => (
 
     <div className="amenities-grid">
       {amenitiesList.map(amenity => (
-        <motion.label 
+        <motion.label
           key={amenity}
           className={`amenity-option ${formData.amenities.includes(amenity) ? 'selected' : ''}`}
           whileHover={{ scale: 1.02 }}
@@ -616,7 +816,7 @@ const Step4 = ({ formData, setFormData, amenitiesList, onAmenityToggle }) => (
   </div>
 );
 
-const Step5 = ({ imageUrls, onImageUpload, onRemoveImage }) => (
+const Step5 = ({ imageUrls, onImageUpload, onRemoveImage, uploadProgress, uploadingImages, isSubmitting }) => (
   <div className="step-container">
     <h2>Add photos of your place</h2>
     <p className="step-description">Upload at least 3 photos to showcase your space</p>
@@ -630,17 +830,23 @@ const Step5 = ({ imageUrls, onImageUpload, onRemoveImage }) => (
           onChange={onImageUpload}
           className="file-input"
           id="image-upload"
+          disabled={isSubmitting}
         />
         <label htmlFor="image-upload" className="upload-label">
           <span className="upload-icon">📷</span>
           <p>Click to upload images</p>
           <small>Supported: JPG, PNG, WEBP (Max 5MB each)</small>
+          {uploadingImages.length > 0 && (
+            <div className="uploading-count">
+              Uploading {uploadingImages.length} image(s)...
+            </div>
+          )}
         </label>
       </div>
 
       <div className="image-preview-grid">
         {imageUrls.map((url, index) => (
-          <motion.div 
+          <motion.div
             key={index}
             className="image-preview"
             initial={{ scale: 0.8, opacity: 0 }}
@@ -648,10 +854,23 @@ const Step5 = ({ imageUrls, onImageUpload, onRemoveImage }) => (
             transition={{ delay: index * 0.1 }}
           >
             <img src={url} alt={`Preview ${index + 1}`} />
-            <button 
-              type="button" 
+
+            {/* Upload Progress */}
+            {uploadProgress[imageFiles[index]?.name] !== undefined && (
+              <div className="upload-progress">
+                <div
+                  className="progress-bar"
+                  style={{ width: `${uploadProgress[imageFiles[index]?.name]}%` }}
+                ></div>
+                <span className="progress-text">{uploadProgress[imageFiles[index]?.name]}%</span>
+              </div>
+            )}
+
+            <button
+              type="button"
               className="remove-image"
               onClick={() => onRemoveImage(index)}
+              disabled={isSubmitting}
             >
               ×
             </button>
@@ -661,8 +880,9 @@ const Step5 = ({ imageUrls, onImageUpload, onRemoveImage }) => (
 
       {imageUrls.length > 0 && (
         <div className={`image-stats ${imageUrls.length >= 3 ? 'success' : 'warning'}`}>
-          {imageUrls.length} image{imageUrls.length !== 1 ? 's' : ''} uploaded • 
+          {imageUrls.length} image{imageUrls.length !== 1 ? 's' : ''} uploaded •
           {imageUrls.length >= 3 ? ' ✅ Ready to publish!' : ' ❌ Add more photos'}
+          {uploadingImages.length > 0 && ` • ⏳ ${uploadingImages.length} uploading...`}
         </div>
       )}
     </div>
@@ -678,9 +898,9 @@ const Step6 = ({ formData, setFormData }) => (
       <div className="input-group">
         <label>
           Base Price per {
-            formData.category === 'experience' ? 'Person' : 
-            formData.category === 'service' ? 'Session' : 
-            'Night'
+            formData.category === 'experience' ? 'Person' :
+              formData.category === 'service' ? 'Session' :
+                'Night'
           } (₱) *
         </label>
         <div className="price-input">
@@ -716,9 +936,9 @@ const Step6 = ({ formData, setFormData }) => (
   </div>
 );
 
-const Step7 = ({ formData, onPublish, isSubmitting, points }) => (
+const Step7 = ({ formData, onPublish, isSubmitting, points, earnedPoints, uploadingImages }) => (
   <div className="step-container">
-    <motion.div 
+    <motion.div
       className="publish-summary"
       initial={{ scale: 0.9, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
@@ -756,12 +976,23 @@ const Step7 = ({ formData, onPublish, isSubmitting, points }) => (
         </div>
       </div>
 
+      {uploadingImages.length > 0 && (
+        <div className="upload-warning">
+          ⚠️ Please wait for {uploadingImages.length} image(s) to finish uploading
+        </div>
+      )}
+
       <div className="points-reward">
         <div className="points-card">
           <span className="points-icon">⭐</span>
           <div className="points-info">
             <h4>+{points} Host Points</h4>
             <p>You'll earn points for completing your listing!</p>
+            {earnedPoints > 0 && (
+              <div className="points-earned-badge">
+                🎉 +{earnedPoints} points earned!
+              </div>
+            )}
           </div>
         </div>
       </div>

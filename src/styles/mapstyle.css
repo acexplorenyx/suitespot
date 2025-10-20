@@ -1,0 +1,449 @@
+/* Leaflet Map Styles - Enhanced Design */
+.leaflet-integration {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border-radius: 20px;
+  padding: 2rem;
+  box-shadow: 
+    0 10px 40px rgba(0, 0, 0, 0.1),
+    0 2px 10px rgba(14, 207, 184, 0.1);
+  border: 1px solid #e2e8f0;
+  backdrop-filter: blur(10px);
+}
+
+/* Search Box */
+.leaflet-search-box {
+  margin-bottom: 1.5rem;
+}
+
+.search-header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.search-header h3 {
+  color: #1e293b;
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  background: linear-gradient(135deg, #0ecfb8, #0bbda8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.search-header p {
+  color: #64748b;
+  font-size: 0.95rem;
+}
+
+.search-input-container {
+  position: relative;
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  background: white;
+  border: 2px solid #e2e8f0;
+  border-radius: 15px;
+  padding: 0.5rem;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+
+.search-input-container:focus-within {
+  border-color: #0ecfb8;
+  box-shadow: 0 4px 20px rgba(14, 207, 184, 0.15);
+  transform: translateY(-2px);
+}
+
+.search-icon {
+  padding: 0 1rem;
+  font-size: 1.2rem;
+  color: #64748b;
+}
+
+.search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  padding: 1rem 0;
+  font-size: 1rem;
+  background: transparent;
+  color: #1e293b;
+}
+
+.search-input::placeholder {
+  color: #94a3b8;
+}
+
+.search-button {
+  padding: 1rem 1.5rem;
+  background: linear-gradient(135deg, #0ecfb8, #0bbda8);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  min-width: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 15px rgba(14, 207, 184, 0.3);
+}
+
+.search-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(14, 207, 184, 0.4);
+}
+
+.search-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Loading Spinner */
+.loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid transparent;
+  border-top: 2px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.loading-spinner-small {
+  width: 16px;
+  height: 16px;
+  border: 2px solid transparent;
+  border-top: 2px solid #0ecfb8;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Suggestions Dropdown */
+.suggestions-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 2px solid #e2e8f0;
+  border-top: none;
+  border-radius: 0 0 15px 15px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  overflow: hidden;
+  margin-top: -2px;
+}
+
+.suggestion-item {
+  display: flex;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.suggestion-item:hover {
+  background: #f0fdfa;
+  transform: translateX(5px);
+}
+
+.suggestion-item:last-child {
+  border-bottom: none;
+}
+
+.suggestion-icon {
+  font-size: 1.2rem;
+  margin-right: 1rem;
+  color: #0ecfb8;
+}
+
+.suggestion-text {
+  flex: 1;
+}
+
+.suggestion-main {
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 0.25rem;
+}
+
+.suggestion-details {
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+/* Map Container */
+.map-container-wrapper {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.map-container {
+  border-radius: 15px;
+  overflow: hidden;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+  border: 2px solid #e2e8f0;
+}
+
+.custom-map {
+  border-radius: 15px;
+}
+
+/* Location Info Panel */
+.location-info-panel {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border: 2px solid #e2e8f0;
+  border-radius: 15px;
+  padding: 1.5rem;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.05);
+}
+
+.panel-header {
+  display: flex;
+  justify-content: between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #f1f5f9;
+}
+
+.panel-header h4 {
+  color: #1e293b;
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin: 0;
+  flex: 1;
+}
+
+.status-badge {
+  background: linear-gradient(135deg, #0ecfb8, #0bbda8);
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.location-details {
+  margin-bottom: 1.5rem;
+}
+
+.detail-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.75rem;
+  padding: 0.75rem;
+  background: #f8fafc;
+  border-radius: 10px;
+  transition: all 0.2s ease;
+}
+
+.detail-item:hover {
+  background: #f0fdfa;
+  transform: translateX(5px);
+}
+
+.detail-label {
+  font-weight: 600;
+  color: #64748b;
+  font-size: 0.9rem;
+  min-width: 100px;
+}
+
+.detail-value {
+  color: #1e293b;
+  font-weight: 500;
+  text-align: right;
+  flex: 1;
+  margin-left: 1rem;
+}
+
+.detail-value.coordinates {
+  font-family: 'Monaco', 'Menlo', monospace;
+  font-size: 0.85rem;
+  color: #0ecfb8;
+  font-weight: 600;
+}
+
+.confirm-location-btn {
+  width: 100%;
+  padding: 1.25rem 2rem;
+  background: linear-gradient(135deg, #0ecfb8, #0bbda8);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  font-size: 1rem;
+  box-shadow: 0 4px 15px rgba(14, 207, 184, 0.3);
+}
+
+.confirm-location-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(14, 207, 184, 0.4);
+}
+
+.btn-icon {
+  font-size: 1.2rem;
+}
+
+/* Instructions */
+.leaflet-instructions {
+  background: linear-gradient(135deg, #f0fdfa 0%, #ecfdf5 100%);
+  border: 2px solid #a7f3d0;
+  border-radius: 15px;
+  padding: 1.5rem;
+}
+
+.instruction-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 10px;
+  transition: all 0.2s ease;
+}
+
+.instruction-item:hover {
+  transform: translateX(5px);
+  background: white;
+}
+
+.instruction-item:last-child {
+  margin-bottom: 0;
+}
+
+.instruction-icon {
+  font-size: 1.5rem;
+  margin-right: 1rem;
+  min-width: 40px;
+  text-align: center;
+}
+
+.instruction-text {
+  color: #065f46;
+  font-size: 0.95rem;
+}
+
+/* Custom Popup */
+.custom-popup .leaflet-popup-content-wrapper {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  border: 2px solid #e2e8f0;
+}
+
+.custom-popup .leaflet-popup-content {
+  margin: 0;
+  padding: 0;
+}
+
+.popup-content {
+  padding: 1rem;
+  min-width: 200px;
+}
+
+.popup-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.popup-header strong {
+  color: #1e293b;
+  font-size: 0.9rem;
+}
+
+.popup-icon {
+  font-size: 1.2rem;
+}
+
+.popup-coordinates {
+  font-family: 'Monaco', 'Menlo', monospace;
+  font-size: 0.8rem;
+  color: #0ecfb8;
+  font-weight: 600;
+  background: #f0fdfa;
+  padding: 0.5rem;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.popup-loading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+/* Custom Marker */
+.custom-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .leaflet-integration {
+    padding: 1rem;
+  }
+  
+  .map-container-wrapper {
+    grid-template-columns: 1fr;
+  }
+  
+  .search-input-container {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .search-button {
+    width: 100%;
+  }
+  
+  .location-info-panel {
+    order: -1;
+  }
+}
+
+@media (max-width: 480px) {
+  .leaflet-integration {
+    margin: 0.5rem;
+    padding: 1rem;
+  }
+  
+  .search-header h3 {
+    font-size: 1.3rem;
+  }
+  
+  .instruction-item {
+    flex-direction: column;
+    text-align: center;
+    gap: 0.5rem;
+  }
+  
+  .instruction-icon {
+    margin-right: 0;
+  }
+}
