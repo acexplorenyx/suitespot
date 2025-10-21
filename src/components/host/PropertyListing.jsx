@@ -1,4 +1,3 @@
-// PropertyListing.jsx - Fixed Design Issues
 import React, { useState, useEffect } from 'react';
 import { collection, addDoc, updateDoc, doc, increment } from 'firebase/firestore';
 import { db, auth } from '../../firebase/firebase';
@@ -92,103 +91,162 @@ function PropertyListing({ onSave, initialData = null }) {
     'EV Charger', 'Gym', 'Breakfast', 'Smoking Allowed', 'Pets Allowed'
   ];
 
-  // Cloudinary Upload Function
+  // Cloudinary Upload Function for Vite - FIXED VERSION
   const uploadToCloudinary = async (file) => {
+    // Use import.meta.env for Vite
+    const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+    const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+
+    console.log('Vite Cloudinary Config:', {
+      cloudName,
+      uploadPreset,
+      fileName: file.name
+    });
+
+    // Validate environment variables
+    if (!cloudName || !uploadPreset) {
+      const errorMsg = 'Cloudinary configuration missing. Please check your Vite environment variables.';
+      console.error(errorMsg, {
+        cloudName: !!cloudName,
+        uploadPreset: !!uploadPreset
+      });
+      throw new Error(errorMsg);
+    }
+
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('upload_preset', process.env.REACT_APP_CLOUDINARY_UPLOAD_PRESET);
-    formData.append('folder', 'airbnb-clone');
+    formData.append('upload_preset', uploadPreset);
+    formData.append('folder', 'suitespot-listings');
 
     try {
+      // Set upload progress
       setUploadProgress(prev => ({ ...prev, [file.name]: 0 }));
       setUploadingImages(prev => [...prev, file.name]);
 
-      // Simulate progress for better UX
-      const progressInterval = setInterval(() => {
-        setUploadProgress(prev => {
-          const currentProgress = prev[file.name] || 0;
-          if (currentProgress < 90) {
-            return { ...prev, [file.name]: currentProgress + 10 };
-          }
-          return prev;
-        });
-      }, 200);
-
+      // Upload to Cloudinary
       const response = await fetch(
-        `https://api.cloudinary.com/v1_1/${process.env.REACT_APP_CLOUDINARY_CLOUD_NAME}/image/upload`,
+        `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
         {
           method: 'POST',
           body: formData,
         }
       );
 
-      clearInterval(progressInterval);
-
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error?.message || 'Upload failed');
+        console.error('Cloudinary upload failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData
+        });
+        throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
 
-      setUploadProgress(prev => ({ ...prev, [file.name]: 100 }));
-
-      // Update formData with Cloudinary URL
-      setFormData(prev => ({
-        ...prev,
-        images: [...prev.images, data.secure_url]
-      }));
-
-      // Remove from uploading list after a delay
-      setTimeout(() => {
-        setUploadingImages(prev => prev.filter(name => name !== file.name));
-        setUploadProgress(prev => {
-          const newProgress = { ...prev };
-          delete newProgress[file.name];
-          return newProgress;
-        });
-      }, 1000);
-
-      return data.secure_url;
-
-    } catch (error) {
-      console.error('Cloudinary upload error:', error);
+      // ✅ IMMEDIATELY REMOVE FROM UPLOADING STATE
       setUploadingImages(prev => prev.filter(name => name !== file.name));
       setUploadProgress(prev => {
         const newProgress = { ...prev };
         delete newProgress[file.name];
         return newProgress;
       });
+
+      console.log('Upload successful:', data.secure_url);
+      return data.secure_url;
+
+    } catch (error) {
+      console.error('Cloudinary upload error:', error);
+
+      // Clean up on error
+      setUploadingImages(prev => prev.filter(name => name !== file.name));
+      setUploadProgress(prev => {
+        const newProgress = { ...prev };
+        delete newProgress[file.name];
+        return newProgress;
+      });
+
       throw error;
     }
   };
 
-  // Enhanced image upload handler
+  // Enhanced image upload handler - FIXED VERSION
   const handleImageUpload = async (e) => {
     const files = Array.from(e.target.files);
 
     if (files.length === 0) return;
 
-    // Validate file sizes (max 5MB)
-    const oversizedFiles = files.filter(file => file.size > 5 * 1024 * 1024);
-    if (oversizedFiles.length > 0) {
-      alert('Some files are too large. Please select images under 5MB.');
-      return;
-    }
-
-    // Create preview URLs immediately
-    const newImageUrls = files.map(file => URL.createObjectURL(file));
-    setImageUrls(prev => [...prev, ...newImageUrls]);
-    setImageFiles(prev => [...prev, ...files]);
-
-    // Upload to Cloudinary in background
-    try {
-      for (const file of files) {
-        await uploadToCloudinary(file);
+    // Validate files
+    const validFiles = files.filter(file => {
+      // Check file type
+      const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      if (!validTypes.includes(file.type)) {
+        alert(`${file.name} is not a supported image format`);
+        return false;
       }
+
+      // Check file size (5MB max)
+      if (file.size > 5 * 1024 * 1024) {
+        alert(`${file.name} is too large. Please select images under 5MB.`);
+        return false;
+      }
+
+      return true;
+    });
+
+    if (validFiles.length === 0) return;
+
+    // Create preview URLs immediately for better UX
+    const newImageUrls = validFiles.map(file => URL.createObjectURL(file));
+    setImageUrls(prev => [...prev, ...newImageUrls]);
+    setImageFiles(prev => [...prev, ...validFiles]);
+
+    // Upload to Cloudinary
+    try {
+      const uploadPromises = validFiles.map(async (file) => {
+        try {
+          const imageUrl = await uploadToCloudinary(file);
+
+          // Update formData with the Cloudinary URL
+          setFormData(prev => ({
+            ...prev,
+            images: [...prev.images, imageUrl]
+          }));
+
+          return imageUrl;
+        } catch (error) {
+          console.error(`Failed to upload ${file.name}:`, error);
+          // Remove failed upload from previews
+          const failedIndex = imageFiles.findIndex(f => f.name === file.name);
+          if (failedIndex !== -1) {
+            setImageUrls(prev => prev.filter((_, i) => i !== failedIndex));
+            setImageFiles(prev => prev.filter((_, i) => i !== failedIndex));
+
+            // Revoke the blob URL
+            if (newImageUrls[failedIndex]?.startsWith('blob:')) {
+              URL.revokeObjectURL(newImageUrls[failedIndex]);
+            }
+          }
+          throw error;
+        }
+      });
+
+      // Wait for all uploads to complete
+      await Promise.all(uploadPromises);
+
+      console.log('All images uploaded successfully!');
+
+      setTimeout(() => {
+        setUploadingImages([]);
+        setUploadProgress({});
+      }, 500);
+
     } catch (error) {
-      console.error('Upload failed:', error);
+      console.error('Some images failed to upload:', error);
       alert('Some images failed to upload. Please try again.');
+
+      setUploadingImages([]);
+      setUploadProgress({});
     }
   };
 
@@ -196,6 +254,7 @@ function PropertyListing({ onSave, initialData = null }) {
     const newImages = imageUrls.filter((_, i) => i !== index);
     const newFiles = imageFiles.filter((_, i) => i !== index);
     const removedFile = imageFiles[index];
+    const removedUrl = imageUrls[index];
 
     setImageUrls(newImages);
     setImageFiles(newFiles);
@@ -206,7 +265,7 @@ function PropertyListing({ onSave, initialData = null }) {
       images: prev.images.filter((_, i) => i !== index)
     }));
 
-    // Clean up progress tracking
+    // Clean up progress tracking and object URL
     if (removedFile) {
       setUploadingImages(prev => prev.filter(name => name !== removedFile.name));
       setUploadProgress(prev => {
@@ -214,6 +273,11 @@ function PropertyListing({ onSave, initialData = null }) {
         delete newProgress[removedFile.name];
         return newProgress;
       });
+
+      // Revoke object URL to prevent memory leaks
+      if (removedUrl?.startsWith('blob:')) {
+        URL.revokeObjectURL(removedUrl);
+      }
     }
   };
 
@@ -441,8 +505,24 @@ function PropertyListing({ onSave, initialData = null }) {
     };
   }, []);
 
+  // Debug component for Vite environment
+  function ViteEnvDebug() {
+    useEffect(() => {
+      console.log('Vite Environment Variables:', {
+        cloudName: import.meta.env.VITE_CLOUDINARY_CLOUD_NAME,
+        uploadPreset: import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET,
+        cloudinaryApiKey: import.meta.env.VITE_CLOUDINARY_API_KEY,
+        mode: import.meta.env.MODE
+      });
+    }, []);
+
+    return null;
+  }
+
   return (
     <div className="property-listing-wizard">
+      <ViteEnvDebug />
+
       <div className="progress-container">
         <div className="progress-steps">
           {steps.map((step, index) => (
@@ -517,6 +597,7 @@ function PropertyListing({ onSave, initialData = null }) {
             {currentStep === 5 && (
               <Step5
                 imageUrls={imageUrls}
+                imageFiles={imageFiles}
                 onImageUpload={handleImageUpload}
                 onRemoveImage={handleRemoveImage}
                 uploadProgress={uploadProgress}
@@ -816,7 +897,7 @@ const Step4 = ({ formData, setFormData, amenitiesList, onAmenityToggle }) => (
   </div>
 );
 
-const Step5 = ({ imageUrls, onImageUpload, onRemoveImage, uploadProgress, uploadingImages, isSubmitting }) => (
+const Step5 = ({ imageUrls, imageFiles, onImageUpload, onRemoveImage, uploadProgress, uploadingImages, isSubmitting }) => (
   <div className="step-container">
     <h2>Add photos of your place</h2>
     <p className="step-description">Upload at least 3 photos to showcase your space</p>
@@ -845,37 +926,43 @@ const Step5 = ({ imageUrls, onImageUpload, onRemoveImage, uploadProgress, upload
       </div>
 
       <div className="image-preview-grid">
-        {imageUrls.map((url, index) => (
-          <motion.div
-            key={index}
-            className="image-preview"
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ delay: index * 0.1 }}
-          >
-            <img src={url} alt={`Preview ${index + 1}`} />
+        {imageUrls.map((url, index) => {
+          const currentFile = imageFiles[index];
+          const fileName = currentFile?.name;
+          const progress = uploadProgress[fileName];
 
-            {/* Upload Progress */}
-            {uploadProgress[imageFiles[index]?.name] !== undefined && (
-              <div className="upload-progress">
-                <div
-                  className="progress-bar"
-                  style={{ width: `${uploadProgress[imageFiles[index]?.name]}%` }}
-                ></div>
-                <span className="progress-text">{uploadProgress[imageFiles[index]?.name]}%</span>
-              </div>
-            )}
-
-            <button
-              type="button"
-              className="remove-image"
-              onClick={() => onRemoveImage(index)}
-              disabled={isSubmitting}
+          return (
+            <motion.div
+              key={index}
+              className="image-preview"
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: index * 0.1 }}
             >
-              ×
-            </button>
-          </motion.div>
-        ))}
+              <img src={url} alt={`Preview ${index + 1}`} />
+
+              {/* Upload Progress - FIXED: Only show if progress exists */}
+              {progress !== undefined && (
+                <div className="upload-progress">
+                  <div
+                    className="progress-bar"
+                    style={{ width: `${progress}%` }}
+                  ></div>
+                  <span className="progress-text">{progress}%</span>
+                </div>
+              )}
+
+              <button
+                type="button"
+                className="remove-image"
+                onClick={() => onRemoveImage(index)}
+                disabled={isSubmitting}
+              >
+                ×
+              </button>
+            </motion.div>
+          );
+        })}
       </div>
 
       {imageUrls.length > 0 && (
@@ -976,9 +1063,14 @@ const Step7 = ({ formData, onPublish, isSubmitting, points, earnedPoints, upload
         </div>
       </div>
 
-      {uploadingImages.length > 0 && (
+      {/* FIXED: Only show warning if there are actually images uploading */}
+      {uploadingImages.length > 0 ? (
         <div className="upload-warning">
           ⚠️ Please wait for {uploadingImages.length} image(s) to finish uploading
+        </div>
+      ) : formData.images.length > 0 && (
+        <div className="upload-success">
+          ✅ All images uploaded successfully! Ready to publish.
         </div>
       )}
 

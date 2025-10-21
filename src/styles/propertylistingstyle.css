@@ -588,6 +588,17 @@
   to { transform: rotate(360deg); }
 }
 
+.upload-success {
+  background: #d1fae5;
+  border: 1px solid #10b981;
+  border-radius: 8px;
+  padding: 1rem;
+  text-align: center;
+  margin: 1rem 0;
+  color: #065f46;
+  font-weight: 600;
+}
+
 /* Upload Warning */
 .upload-warning {
   background: #fef3c7;
@@ -911,3 +922,4 @@
     font-size: 0.8rem;
   }
 }
+

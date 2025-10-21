@@ -461,6 +461,7 @@ function HostDashboard() {
                     </button>
                   </div>
 
+                  {/* Divider */}
                   <div className="dropdown-divider"></div>
 
                   {/* Help & Support */}
