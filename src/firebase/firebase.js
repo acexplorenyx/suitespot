@@ -1,6 +1,11 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, sendEmailVerification } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { 
+  getAuth, GoogleAuthProvider, sendEmailVerification, createUserWithEmailAndPassword,
+  signInWithEmailAndPassword, signInWithPopup, updateProfile, sendPasswordResetEmail, applyActionCode
+} from 'firebase/auth';
+import { 
+  getFirestore, collection, doc, getDoc, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, orderBy, limit, serverTimestamp
+} from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -14,7 +19,22 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const sendVerificationEmail = sendEmailVerification;
 export const db = getFirestore(app);
 export const googleProvider = new GoogleAuthProvider();
+
+// Configure Google Provider
+googleProvider.setCustomParameters({
+  prompt: 'select_account'
+});
+
+export {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  sendEmailVerification,
+  updateProfile,
+  sendPasswordResetEmail,
+  applyActionCode
+};
+export { doc, getDoc, collection, query, where, onSnapshot };
 export default app;

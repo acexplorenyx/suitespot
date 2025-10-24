@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Login from './Login';
 import Registration from './Registration';
 import '../../styles/authmodalstyle.css';
+import logoImage from '/logo.ico';  
 
 function AuthModal({ onClose, initialView = 'login' }) {
   const [isLogin, setIsLogin] = useState(initialView === 'login');
@@ -102,11 +103,11 @@ function AuthModal({ onClose, initialView = 'login' }) {
         </button>
 
         {/* Modal Header with Enhanced Tabs */}
-        <div className="modal-header">
+        <div className="authmodal-header">
           <div className="logo-section">
             <div className="animated-logo">
-              <span className="logo-emoji">🏠</span>
-              <span className="logo-text">SuiteSpot</span>
+              <img src={logoImage} alt="SuiteSpot's Logo" className='logoImg'/>
+              <span className="modallogo-text">SuiteSpot</span>
             </div>
             <p className="welcome-text">
               {isLogin ? 'Welcome back!' : 'Join SuiteSpot today'}
@@ -119,7 +120,6 @@ function AuthModal({ onClose, initialView = 'login' }) {
               onClick={() => handleSwitchView('login')}
               disabled={isAnimating}
             >
-              <span className="tab-icon">🔐</span>
               <span className="tab-label">Log In</span>
               {isLogin && <div className="active-indicator"></div>}
             </button>
@@ -134,7 +134,7 @@ function AuthModal({ onClose, initialView = 'login' }) {
           </div>
         </div>
 
-        {/* Modal Content with Animation */}
+        {/* Modal Content */}
         <div className={`modal-content ${isAnimating ? 'animating' : ''}`}>
           {isLogin ? (
             <Login

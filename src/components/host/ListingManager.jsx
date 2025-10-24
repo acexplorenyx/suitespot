@@ -253,7 +253,7 @@ function ListingsManager({ listings }) {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="search-input"
             />
-            <span className="search-icon">🔍</span>
+            <span className="listing-search-icon">🔍</span>
           </div>
 
           <button 

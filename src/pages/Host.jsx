@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, getDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase/firebase';
 import HostOverview from '../components/host/HostOverview';
 import ListingManager from '../components/host/ListingManager';
@@ -20,6 +20,7 @@ function HostDashboard() {
   const [userProfile, setUserProfile] = useState(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [loading, setLoading] = useState(true);
   const userMenuRef = useRef(null);
   const notificationsRef = useRef(null);
   
@@ -36,6 +37,69 @@ function HostDashboard() {
   });
 
   const navigate = useNavigate();
+
+  // Enhanced user profile fetch
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        const user = auth.currentUser;
+        if (user) {
+          console.log('Current user:', user);
+          
+          // Method 1: Try to get user data from Firestore
+          const userDocRef = doc(db, 'users', user.uid);
+          const userDoc = await getDoc(userDocRef);
+          
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            console.log('User data from Firestore:', userData);
+            setUserProfile({
+              uid: user.uid,
+              displayName: userData.displayName || user.displayName || 'User',
+              email: userData.email || user.email || 'No email',
+              photoURL: userData.photoURL || user.photoURL || null,
+              phoneNumber: userData.phoneNumber || user.phoneNumber || null,
+              createdAt: userData.createdAt || user.metadata.creationTime,
+              ...userData
+            });
+          } else {
+            // Method 2: Use Firebase Auth user data if Firestore doc doesn't exist
+            console.log('Using Firebase Auth data');
+            setUserProfile({
+              uid: user.uid,
+              displayName: user.displayName || 'User',
+              email: user.email || 'No email',
+              photoURL: user.photoURL || null,
+              phoneNumber: user.phoneNumber || null,
+              createdAt: user.metadata.creationTime
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching user profile:', error);
+        // Fallback to basic user data
+        const user = auth.currentUser;
+        if (user) {
+          setUserProfile({
+            uid: user.uid,
+            displayName: user.displayName || 'User',
+            email: user.email || 'No email',
+            photoURL: user.photoURL || null
+          });
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserProfile();
+  }, []);
+
+  // Debug user profile changes
+  useEffect(() => {
+    console.log('User Profile State:', userProfile);
+    console.log('Current Auth User:', auth.currentUser);
+  }, [userProfile]);
 
   // Close user menu and notifications on outside click and on ESC
   useEffect(() => {
@@ -79,16 +143,6 @@ function HostDashboard() {
   useEffect(() => {
     const user = auth.currentUser;
     if (user) {
-      // Fetch user profile
-      const userQuery = query(collection(db, 'users'), where('uid', '==', user.uid));
-      const unsubscribeUser = onSnapshot(userQuery, (snapshot) => {
-        if (!snapshot.empty) {
-          const userData = snapshot.docs[0].data();
-          setUserProfile(userData);
-          setStats(prev => ({ ...prev, hostPoints: userData.points || 0 }));
-        }
-      });
-
       // Fetch host listings
       const listingsQuery = query(
         collection(db, 'properties'),
@@ -181,7 +235,6 @@ function HostDashboard() {
       });
 
       return () => {
-        unsubscribeUser();
         unsubscribeListings();
         unsubscribeBookings();
         unsubscribeMessages();
@@ -213,7 +266,7 @@ function HostDashboard() {
   // Calculate unread messages count
   const unreadMessagesCount = messages.filter(msg => !msg.isRead).length;
 
-  // Mock notifications data (replace with real data from Firestore)
+  // Mock notifications data
   const notifications = [
     {
       id: 1,
@@ -258,12 +311,13 @@ function HostDashboard() {
 
   return (
     <div className="host-dashboard">
-      {/* Enhanced Navigation Bar */}
       <nav className="host-navbar">
         <div className="nav-container">
           {/* Logo */}
           <div className="nav-logo" onClick={() => navigate('/host')}>
-            <span className="logo-icon"><img src={logoImage} alt="SuiteSpot Logo" className="logo-img" /></span>
+            <span className="logo-icon">
+              <img src={logoImage} alt="SuiteSpot Logo" className="logo-img" />
+            </span>
             <span className="logo-text">SuiteSpot</span>
             <span className="logo-badge">Host</span>
           </div>
@@ -291,8 +345,23 @@ function HostDashboard() {
             ))}
           </div>
 
-          {/* User Menu */}
+          {/* User Menu Section */}
           <div className="nav-user-menu">
+            <button 
+              className="switch-mode-btn"
+              onClick={switchToGuestMode}
+              title="Switch to Guest Mode"
+            >
+              <span className="switch-icon">👤</span>
+              <span className="switch-text">Guest Mode</span>
+            </button>
+
+            {/* Host Points Display */}
+            <div className="host-points-display">
+              <span className="points-icon">⭐</span>
+              <span className="points-value">{stats.hostPoints || 0}</span>
+            </div>
+
             {/* Notifications Dropdown */}
             <div className="notifications-container" ref={notificationsRef}>
               <button 
@@ -305,7 +374,7 @@ function HostDashboard() {
               >
                 <span className="switch-icon">🔔</span>
                 {unreadNotificationsCount > 0 && (
-                  <span className="nav-badge" style={{ position: 'absolute', top: '-6px', right: '-6px' }}>
+                  <span className="nav-badge" style={{ position: 'absolute', top: '-4px', right: '-4px' }}>
                     {unreadNotificationsCount > 9 ? '9+' : unreadNotificationsCount}
                   </span>
                 )}
@@ -329,7 +398,6 @@ function HostDashboard() {
                           key={notification.id}
                           className={`notification-item ${notification.unread ? 'unread' : ''}`}
                           onClick={() => {
-                            // Handle notification click
                             setShowNotifications(false);
                           }}
                         >
@@ -365,27 +433,46 @@ function HostDashboard() {
               )}
             </div>
 
+            {/* User Menu - Profile Only (No Name) */}
             <div className="user-menu-container" ref={userMenuRef}>
               <button 
-                className="user-menu-trigger"
+                className="user-menu-trigger profile-only"
                 onClick={() => setShowUserMenu(!showUserMenu)}
                 aria-haspopup="menu"
                 aria-expanded={showUserMenu}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowUserMenu((s) => !s); } }}
+                onKeyDown={(e) => { 
+                  if (e.key === 'Enter' || e.key === ' ') { 
+                    e.preventDefault(); 
+                    setShowUserMenu((s) => !s); 
+                  } 
+                }}
               >
                 <div className="user-avatar">
-                  <img 
-                    src={userProfile?.photoURL || '/api/placeholder/32/32'} 
-                    alt={userProfile?.displayName || 'User'} 
-                  />
+                  {userProfile?.photoURL ? (
+                    <img 
+                      src={userProfile.photoURL} 
+                      alt={userProfile?.displayName || 'User'} 
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        const fallback = e.target.nextSibling;
+                        if (fallback) fallback.style.display = 'flex';
+                      }}
+                    />
+                  ) : null}
+                  <div 
+                    className="avatar-fallback" 
+                    style={{ display: userProfile?.photoURL ? 'none' : 'flex' }}
+                  >
+                    {userProfile?.displayName?.charAt(0)?.toUpperCase() || 'U'}
+                  </div>
                 </div>
-                <span className="user-name">{userProfile?.displayName || 'User'}</span>
+                {/* Removed user name from header */}
                 <span className={`menu-arrow ${showUserMenu ? 'open' : ''}`}>▼</span>
               </button>
 
               {showUserMenu && (
                 <div className="user-dropdown" role="menu" aria-label="User menu">
-                  {/* User Info Section */}
+                  {/* Enhanced User Info Section */}
                   <div className="dropdown-section user-info-section">
                     <div className="user-info">
                       <div className="user-avatar large">
@@ -395,17 +482,24 @@ function HostDashboard() {
                             alt={userProfile?.displayName || 'User'} 
                             onError={(e) => {
                               e.target.style.display = 'none';
-                              e.target.nextSibling.style.display = 'flex';
+                              const fallback = e.target.nextSibling;
+                              if (fallback) fallback.style.display = 'flex';
                             }}
                           />
                         ) : null}
-                        <div className="avatar-fallback" style={{ display: userProfile?.photoURL ? 'none' : 'flex' }}>
-                          {userProfile?.displayName?.charAt(0) || 'U'}
+                        <div 
+                          className="avatar-fallback large" 
+                          style={{ display: userProfile?.photoURL ? 'none' : 'flex' }}
+                        >
+                          {userProfile?.displayName?.charAt(0)?.toUpperCase() || 'U'}
                         </div>
                       </div>
                       <div className="user-details">
                         <div className="user-name">{userProfile?.displayName || 'User'}</div>
-                        <div className="user-email">{userProfile?.email || 'user@example.com'}</div>
+                        <div className="user-email">{userProfile?.email || 'No email'}</div>
+                        {userProfile?.phoneNumber && (
+                          <div className="user-phone">📱 {userProfile.phoneNumber}</div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -420,17 +514,7 @@ function HostDashboard() {
                       }}
                     >
                       <span className="item-icon profile-icon">👤</span>
-                      <span className="item-text">Profile</span>
-                    </button>
-                    <button 
-                      className="dropdown-item" 
-                      onClick={() => {
-                        setShowUserMenu(false);
-                        setActiveTab('settings');
-                      }}
-                    >
-                      <span className="item-icon settings-icon">⚙️</span>
-                      <span className="item-text">Account Settings</span>
+                      <span className="item-text">Profile & Settings</span>
                     </button>
                     <button 
                       className="dropdown-item"
@@ -457,7 +541,7 @@ function HostDashboard() {
                       }}
                     >
                       <span className="item-icon guest-icon">👤</span>
-                      <span className="item-text">Switch to Guest Mode</span>
+                      <span className="item-text">Switch to Guest</span>
                     </button>
                   </div>
 
@@ -494,47 +578,6 @@ function HostDashboard() {
 
       {/* Main Content */}
       <div className="host-content">
-        {/* Stats Overview */}
-        <div className="stats-overview">
-          <div className="stats-grid">
-            <div className="stat-card">
-              <div className="stat-icon">🏠</div>
-              <div className="stat-info">
-                <h3>{stats.totalListings}</h3>
-                <p>Total Listings</p>
-                <small>{stats.publishedListings} Published • {stats.draftListings} Drafts</small>
-              </div>
-            </div>
-            
-            <div className="stat-card">
-              <div className="stat-icon">📅</div>
-              <div className="stat-info">
-                <h3>{stats.todayBookings}</h3>
-                <p>Today's Bookings</p>
-                <small>Check-ins & Check-outs</small>
-              </div>
-            </div>
-            
-            <div className="stat-card">
-              <div className="stat-icon">🔄</div>
-              <div className="stat-info">
-                <h3>{stats.upcomingBookings}</h3>
-                <p>Upcoming</p>
-                <small>Next 30 days</small>
-              </div>
-            </div>
-            
-            <div className="stat-card">
-              <div className="stat-icon">💰</div>
-              <div className="stat-info">
-                <h3>${stats.monthlyEarnings}</h3>
-                <p>This Month</p>
-                <small>After service fees</small>
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* Tab Content */}
         {renderTabContent()}
       </div>

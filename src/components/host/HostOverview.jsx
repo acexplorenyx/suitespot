@@ -34,7 +34,6 @@ function HostOverview({ stats, bookings, listings }) {
         <div className="rewards-list">
           <span className="reward-item">⭐ Early Payout</span>
           <span className="reward-item">🏆 Featured Listings</span>
-          <span className="reward-item">📈 Priority Support</span>
         </div>
       </div>
 

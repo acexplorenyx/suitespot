@@ -332,16 +332,315 @@ function UsersTab() {
 
 // Listings Tab Component
 function ListingsTab() {
+  const [pendingListings, setPendingListings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedListings, setSelectedListings] = useState([]);
+  const [filter, setFilter] = useState('pending'); // pending, approved, rejected
+
+  useEffect(() => {
+    const fetchListings = async () => {
+      try {
+        let queryRef = collection(db, 'properties');
+
+        // Filter based on status
+        if (filter === 'pending') {
+          queryRef = query(queryRef, where('status', '==', 'pending'));
+        } else if (filter === 'approved') {
+          queryRef = query(queryRef, where('status', '==', 'approved'));
+        } else if (filter === 'rejected') {
+          queryRef = query(queryRef, where('status', '==', 'rejected'));
+        }
+
+        const snapshot = await getDocs(queryRef);
+        const listingsData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+
+        setPendingListings(listingsData);
+        setLoading(false);
+      } catch (error) {
+        console.error('Error fetching listings:', error);
+        setLoading(false);
+      }
+    };
+
+    fetchListings();
+  }, [filter]);
+
+  const handleApprove = async (listingId) => {
+    try {
+      await updateDoc(doc(db, 'properties', listingId), {
+        status: 'approved',
+        approvedAt: new Date(),
+        approvedBy: auth.currentUser?.uid || 'admin',
+        updatedAt: new Date()
+      });
+
+      // Update local state
+      setPendingListings(prev => prev.filter(listing => listing.id !== listingId));
+      alert('Listing approved successfully!');
+    } catch (error) {
+      console.error('Error approving listing:', error);
+      alert('Error approving listing. Please try again.');
+    }
+  };
+
+  const handleReject = async (listingId) => {
+    const reason = prompt('Please provide a reason for rejection:');
+    if (!reason) return;
+
+    try {
+      await updateDoc(doc(db, 'properties', listingId), {
+        status: 'rejected',
+        rejectedAt: new Date(),
+        rejectedBy: auth.currentUser?.uid || 'admin',
+        rejectionReason: reason,
+        updatedAt: new Date()
+      });
+
+      // Update local state
+      setPendingListings(prev => prev.filter(listing => listing.id !== listingId));
+      alert('Listing rejected successfully!');
+    } catch (error) {
+      console.error('Error rejecting listing:', error);
+      alert('Error rejecting listing. Please try again.');
+    }
+  };
+
+  const handleBulkApprove = async () => {
+    if (selectedListings.length === 0) return;
+
+    try {
+      const updatePromises = selectedListings.map(listingId =>
+        updateDoc(doc(db, 'properties', listingId), {
+          status: 'approved',
+          approvedAt: new Date(),
+          approvedBy: auth.currentUser?.uid || 'admin',
+          updatedAt: new Date()
+        })
+      );
+
+      await Promise.all(updatePromises);
+
+      // Update local state
+      setPendingListings(prev => prev.filter(listing => !selectedListings.includes(listing.id)));
+      setSelectedListings([]);
+      alert(`${selectedListings.length} listings approved successfully!`);
+    } catch (error) {
+      console.error('Error bulk approving listings:', error);
+      alert('Error approving listings. Please try again.');
+    }
+  };
+
+  const handleSelectListing = (listingId) => {
+    setSelectedListings(prev =>
+      prev.includes(listingId)
+        ? prev.filter(id => id !== listingId)
+        : [...prev, listingId]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (selectedListings.length === pendingListings.length) {
+      setSelectedListings([]);
+    } else {
+      setSelectedListings(pendingListings.map(listing => listing.id));
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="listings-tab">
+        <div className="loading-state">
+          <div className="spinner"></div>
+          <p>Loading listings...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="listings-tab">
       <div className="tab-header">
         <h2>Listing Management</h2>
         <div className="tab-actions">
-          <button className="admin-btn primary">Approve All</button>
+          {selectedListings.length > 0 && (
+            <button className="admin-btn primary" onClick={handleBulkApprove}>
+              Approve Selected ({selectedListings.length})
+            </button>
+          )}
           <button className="admin-btn secondary">Export Listings</button>
         </div>
       </div>
-      <p>Listing management content will be implemented here...</p>
+
+      {/* Filter Tabs */}
+      <div className="filter-tabs">
+        {[
+          { key: 'pending', label: 'Pending Approval', count: pendingListings.filter(l => l.status === 'pending').length },
+          { key: 'approved', label: 'Approved', count: pendingListings.filter(l => l.status === 'approved').length },
+          { key: 'rejected', label: 'Rejected', count: pendingListings.filter(l => l.status === 'rejected').length }
+        ].map(tab => (
+          <button
+            key={tab.key}
+            className={`filter-tab ${filter === tab.key ? 'active' : ''}`}
+            onClick={() => setFilter(tab.key)}
+          >
+            {tab.label} ({tab.count})
+          </button>
+        ))}
+      </div>
+
+      {/* Bulk Actions */}
+      {selectedListings.length > 0 && (
+        <div className="bulk-actions">
+          <label>
+            <input
+              type="checkbox"
+              checked={selectedListings.length === pendingListings.length}
+              onChange={handleSelectAll}
+            />
+            Select All ({pendingListings.length})
+          </label>
+          <span>{selectedListings.length} selected</span>
+        </div>
+      )}
+
+      {/* Listings List */}
+      <div className="listings-list">
+        {pendingListings.length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-icon">🏠</div>
+            <h3>No {filter} listings</h3>
+            <p>
+              {filter === 'pending'
+                ? 'All listings have been reviewed.'
+                : `No listings are currently ${filter}.`
+              }
+            </p>
+          </div>
+        ) : (
+          pendingListings.map(listing => (
+            <ListingItem
+              key={listing.id}
+              listing={listing}
+              onApprove={handleApprove}
+              onReject={handleReject}
+              isSelected={selectedListings.includes(listing.id)}
+              onSelect={handleSelectListing}
+              showActions={filter === 'pending'}
+            />
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Listing Item Component
+function ListingItem({ listing, onApprove, onReject, isSelected, onSelect, showActions }) {
+  const getStatusBadge = (status) => {
+    const statusConfig = {
+      pending: { label: 'Pending', color: '#f59e0b', bgColor: '#fef3c7', icon: '⏳' },
+      approved: { label: 'Approved', color: '#10b981', bgColor: '#ecfdf5', icon: '✅' },
+      rejected: { label: 'Rejected', color: '#ef4444', bgColor: '#fef2f2', icon: '❌' }
+    };
+
+    const config = statusConfig[status] || statusConfig.pending;
+
+    return (
+      <span
+        className="status-badge"
+        style={{
+          color: config.color,
+          backgroundColor: config.bgColor,
+          border: `1px solid ${config.color}20`
+        }}
+      >
+        <span className="status-icon">{config.icon}</span>
+        {config.label}
+      </span>
+    );
+  };
+
+  return (
+    <div className={`listing-item ${isSelected ? 'selected' : ''}`}>
+      {showActions && (
+        <div className="listing-checkbox">
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={() => onSelect(listing.id)}
+          />
+        </div>
+      )}
+
+      <div className="listing-image">
+        {listing.images && listing.images.length > 0 ? (
+          <img src={listing.images[0]} alt={listing.title} />
+        ) : (
+          <div className="no-image">
+            <span className="no-image-icon">🏠</span>
+          </div>
+        )}
+      </div>
+
+      <div className="listing-content">
+        <div className="listing-header">
+          <h3>{listing.title || 'Untitled Listing'}</h3>
+          {getStatusBadge(listing.status)}
+        </div>
+
+        <div className="listing-meta">
+          <span className="listing-category">
+            <span className="category-icon">
+              {listing.category === 'home' ? '🏠' :
+               listing.category === 'experience' ? '🎪' : '🔧'}
+            </span>
+            {listing.category}
+          </span>
+          <span className="listing-location">📍 {listing.location?.city}, {listing.location?.country}</span>
+          <span className="listing-price">₱{listing.price}/night</span>
+        </div>
+
+        <div className="listing-details">
+          <p className="listing-description">
+            {listing.description?.substring(0, 150)}...
+          </p>
+        </div>
+
+        <div className="listing-host">
+          <span className="host-info">
+            Host: {listing.hostName} ({listing.hostEmail})
+          </span>
+          <span className="created-date">
+            Created: {listing.createdAt?.toDate?.()?.toLocaleDateString() || 'Unknown'}
+          </span>
+        </div>
+
+        {listing.status === 'rejected' && listing.rejectionReason && (
+          <div className="rejection-reason">
+            <strong>Rejection Reason:</strong> {listing.rejectionReason}
+          </div>
+        )}
+
+        {showActions && (
+          <div className="listing-actions">
+            <button
+              className="action-btn approve"
+              onClick={() => onApprove(listing.id)}
+            >
+              ✅ Approve
+            </button>
+            <button
+              className="action-btn reject"
+              onClick={() => onReject(listing.id)}
+            >
+              ❌ Reject
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

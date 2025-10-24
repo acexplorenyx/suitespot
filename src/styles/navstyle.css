@@ -1,77 +1,113 @@
 .navbar {
-    background-color: white;
-    color: #090d20;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    padding: 10px 25px;
-    display: flex;
-    position: sticky;
-    top: 0;
-    z-index: 1000;
+  background-color: white;
+  color: #090d20;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 20px 25px;
+  display: flex;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
 }
-.navbar-logo {
-    height: 90px;
-    margin-left: 8px;
+
+.logo-img {
+  height: 50px;
+  width: auto;
+  margin-right: 8px;
 }
+
 .navbar-brand {
-    display: flex;
-    align-items: center;
-    margin-right: 110px;
+  display: flex;
+  align-items: center;
+  margin-right: 50px;
 }
+
 .navbar-links {
-    list-style: none;
-    display: flex;
-    align-items: center;
-    gap: 40px;
-    margin: 0;
-    padding: 0;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 40px;
+  margin: 0;
+  padding: 0;
 }
+
 .navbar-center {
-    display: flex;
-    justify-content: center;
-    flex-grow: 1;
+  display: flex;
+  justify-content: center;
+  flex-grow: 1;
 }
+
 .nav-item {
-    display: flex;
-    align-items: center;
-    flex-direction: column;
-    text-align: center;
-    font-size: 15px;
-    cursor: pointer;
-    color: #555;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  text-align: center;
+  font-size: 15px;
+  cursor: pointer;
+  color: #555;
 }
+
 .nav-item a {
-    text-decoration: none;
-    color: inherit;
-    margin-top: 4px;
-    transition: color 0.3s;
-    font-size: 18px;
+  text-decoration: none;
+  color: inherit;
+  margin-top: 4px;
+  transition: color 0.3s;
+  font-size: 18px;
 }
+
 .nav-item a:hover {
-    color: #0ecfb8;
+  color: #0ecfb8;
 }
 
 .nav-icon {
-    height: 35px;
-    width: 35px;
+  font-size: 28px;
+  color: #555;
+  transition: all 0.3s ease;
 }
+
+.animated-icon {
+  animation: turn 1s ease-in-out;
+}
+
+.animated-icon:hover {
+  transform: scale(1.1) rotate(5deg);
+  color: #0ecfb8;
+  animation-play-state: paused;
+}
+
+@keyframes turn {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
 .navbar-right {
-    display: flex;
-    align-items: center;
-    gap: 15px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
 }
-.become-host, .loginbtn {
-    background-color: #0ecfb8;
-    color: white;
-    border: none;
-    padding: 8px 15px;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 16px;
-    transition: background-color 0.3s;
+
+.become-host,
+.loginbtn {
+  background-color: #0ecfb8;
+  color: white;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background-color 0.3s;
 }
-.become-host:hover, .loginbtn:hover {
-    background-color: #30e1cc;
-    color: #090d20;
+
+.become-host:hover,
+.loginbtn:hover {
+  background-color: #30e1cc;
+  color: #090d20;
 }
 
 .menu-icon {
@@ -98,11 +134,13 @@
 }
 
 .user-menu-btn:hover {
-  box-shadow: 0 2px 4px rgba(0,0,0,0.18);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.18);
 }
+
 .menu-icon-small {
   font-size: 22px;
 }
+
 .user-icon {
   background: #717171;
   color: white;
@@ -118,7 +156,7 @@
   right: 0;
   background: white;
   border-radius: 12px;
-  box-shadow: 0 2px 16px rgba(0,0,0,0.12);
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.12);
   padding: 8px 0;
   min-width: 220px;
   z-index: 1000;
@@ -172,7 +210,7 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0,0,0,0.5);
+  background: rgba(0, 0, 0, 0.5);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -246,7 +284,7 @@
 
 .google-login-btn:hover {
   background: #f8f9fa;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .google-icon {
@@ -279,6 +317,18 @@
 
 /* Mobile Responsive */
 @media (max-width: 768px) {
+  .navbar {
+    padding: 10px 15px;
+  }
+
+  .logo-img {
+    height: 40px;
+  }
+
+  .navbar-brand {
+    margin-right: 20px;
+  }
+
   .menu-icon {
     display: block;
   }
@@ -289,8 +339,9 @@
     left: 0;
     width: 100%;
     background: white;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     display: none;
+    padding: 10px 0;
   }
 
   .navbar-center.mobile-menu-open {
@@ -300,12 +351,30 @@
   .navbar-links {
     flex-direction: column;
     gap: 0;
+    width: 100%;
   }
 
   .nav-item {
-    padding: 16px;
+    padding: 16px 20px;
     border-bottom: 1px solid #ebebeb;
     flex-direction: row;
     gap: 12px;
+    justify-content: flex-start;
+    width: 100%;
+    text-align: left;
+  }
+
+  .nav-icon {
+    font-size: 24px;
+  }
+
+  .navbar-right {
+    gap: 10px;
+  }
+
+  .become-host,
+  .loginbtn {
+    padding: 6px 12px;
+    font-size: 14px;
   }
 }

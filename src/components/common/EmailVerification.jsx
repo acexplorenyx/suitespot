@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { sendEmailVerification } from 'firebase/auth';
+import { sendEmailVerification, getAuth } from 'firebase/auth';
 import '../../styles/authmodalstyle.css';
 
 function EmailVerification({ user, onVerificationComplete, onBack }) {
@@ -7,6 +7,8 @@ function EmailVerification({ user, onVerificationComplete, onBack }) {
     const [error, setError] = useState('');
     const [countdown, setCountdown] = useState(0);
     const [emailSent, setEmailSent] = useState(false);
+    const [checkingCount, setCheckingCount] = useState(0);
+    const [lastSentTime, setLastSentTime] = useState(0);
 
     useEffect(() => {
         if (user && !emailSent) {
@@ -21,61 +23,109 @@ function EmailVerification({ user, onVerificationComplete, onBack }) {
         }
     }, [countdown]);
 
+    // Auto-check verification status every 5 seconds
+    useEffect(() => {
+        if (emailSent && checkingCount < 12) { // Check for up to 1 minute
+            const interval = setInterval(() => {
+                checkVerificationStatus();
+            }, 5000);
+            
+            return () => clearInterval(interval);
+        }
+    }, [emailSent, checkingCount]);
+
     const sendVerificationEmail = async () => {
         try {
             setIsLoading(true);
             setError('');
-            
-            // Check if user object is valid
+
             if (!user || !user.email) {
                 setError('User information is missing. Please try registering again.');
+                setIsLoading(false);
                 return;
             }
 
-            console.log('Sending verification email to:', user.email);
-            
-            await sendEmailVerification(user);
-            
-            console.log('Verification email sent successfully');
+            // Check if verification email was sent recently for this email (prevent duplicates)
+            const lastSent = localStorage.getItem(`verification_sent_${user.email}`);
+            const now = Date.now();
+            if (lastSent && now - parseInt(lastSent) < 60000) { // 1 minute
+                setError('Verification email already sent recently. Please check your inbox.');
+                setIsLoading(false);
+                return;
+            }
+
+            // rate limiting - 60 seconds
+            if (lastSentTime && now - lastSentTime < 60000) {
+                setError('Please wait 60 seconds before requesting another verification email.');
+                setIsLoading(false);
+                return;
+            }
+
+            const auth = getAuth();
+            const actionCodeSettings = {
+                url: `${window.location.origin}/verify-success?email=${encodeURIComponent(user.email)}&name=${encodeURIComponent(user.displayName || '')}`,
+                handleCodeInApp: true
+            };
+
+            await sendEmailVerification(user, actionCodeSettings);
+
             setEmailSent(true);
-            setCountdown(30);
-            
+            setCountdown(60);
+            setCheckingCount(0);
+            setLastSentTime(now);
+            localStorage.setItem(`verification_sent_${user.email}`, now.toString());
+
+            // Increment verification count to track total sends
+            const currentCount = parseInt(localStorage.getItem(`verification_${user.email}`) || 0);
+            localStorage.setItem(`verification_${user.email}`, (currentCount + 1).toString());
+
         } catch (error) {
             console.error('Error sending verification email:', error);
-            
+
             let errorMessage = 'Failed to send verification email. Please try again.';
-            
-            // Handle specific Firebase errors
+
             if (error.code === 'auth/too-many-requests') {
-                errorMessage = 'Too many attempts. Please try again later.';
+                errorMessage = 'Too many attempts. Please try again in 60 seconds.';
+                setCountdown(60);
             } else if (error.code === 'auth/user-not-found') {
                 errorMessage = 'User account not found. Please try registering again.';
             } else if (error.code === 'auth/invalid-email') {
                 errorMessage = 'Invalid email address. Please check your email.';
             }
-            
+
             setError(errorMessage);
         } finally {
             setIsLoading(false);
         }
     };
 
-    const handleResendEmail = async () => {
-        if (countdown > 0) return;
-        await sendVerificationEmail();
+    const checkVerificationStatus = async () => {
+        try {
+            const auth = getAuth();
+            await user.reload();
+            const currentUser = auth.currentUser;
+            
+            if (currentUser && currentUser.emailVerified) {
+                console.log('Email verified successfully!');
+                onVerificationComplete(currentUser);
+            } else {
+                setCheckingCount(prev => prev + 1);
+            }
+        } catch (error) {
+            console.error('Auto-check error:', error);
+        }
     };
 
     const handleManualCheck = async () => {
         setIsLoading(true);
         setError('');
         try {
-            // Reload user to get latest email verification status
+            const auth = getAuth();
             await user.reload();
-            const currentUser = user.auth.currentUser;
+            const currentUser = auth.currentUser;
             
-            console.log('Email verification status:', currentUser.emailVerified);
-            
-            if (currentUser.emailVerified) {
+            if (currentUser && currentUser.emailVerified) {
+                console.log('Email verified successfully!');
                 onVerificationComplete(currentUser);
             } else {
                 setError('Email not verified yet. Please check your inbox and click the verification link.');
@@ -88,14 +138,10 @@ function EmailVerification({ user, onVerificationComplete, onBack }) {
         }
     };
 
-    // Debug info
-    console.log('EmailVerification component state:', {
-        user: user?.email,
-        isLoading,
-        error,
-        emailSent,
-        countdown
-    });
+    const handleResendEmail = async () => {
+        if (countdown > 0) return;
+        await sendVerificationEmail();
+    };
 
     return (
         <div className="verification-container">
@@ -105,23 +151,33 @@ function EmailVerification({ user, onVerificationComplete, onBack }) {
                 <p className="verification-subtitle">
                     We've sent a verification link to <strong>{user?.email}</strong>
                 </p>
+                <p className="verification-instruction">
+                    Please check your inbox and click the verification link to activate your account.
+                    Don't forget to check your spam folder!
+                </p>
             </div>
 
             <div className="verification-content">
                 <div className="verification-steps">
                     <div className="step">
                         <span className="step-number">1</span>
-                        <span className="step-text">Check your email inbox</span>
+                        <span className="step-text">Check your email inbox (and spam folder)</span>
                     </div>
                     <div className="step">
                         <span className="step-number">2</span>
-                        <span className="step-text">Click the verification link</span>
+                        <span className="step-text">Click the "Continue" button in the email</span>
                     </div>
                     <div className="step">
                         <span className="step-number">3</span>
-                        <span className="step-text">Return here to continue</span>
+                        <span className="step-text">Return here to continue (we'll auto-detect verification)</span>
                     </div>
                 </div>
+
+                {emailSent && (
+                    <div className="auto-check-info">
+                        <p>⏰ Auto-checking verification status... ({checkingCount}/12 attempts)</p>
+                    </div>
+                )}
 
                 <div className="manual-check-section">
                     <button 
@@ -166,16 +222,6 @@ function EmailVerification({ user, onVerificationComplete, onBack }) {
                     <div className="error-banner animated-error">
                         <span className="error-icon">⚠️</span>
                         {error}
-                    </div>
-                )}
-
-                {/* Debug info for development */}
-                {process.env.NODE_ENV === 'development' && (
-                    <div style={{ marginTop: '20px', padding: '10px', background: '#f5f5f5', borderRadius: '5px', fontSize: '12px' }}>
-                        <strong>Debug Info:</strong>
-                        <div>User: {user?.email}</div>
-                        <div>User ID: {user?.uid}</div>
-                        <div>Email Sent: {emailSent ? 'Yes' : 'No'}</div>
                     </div>
                 )}
             </div>

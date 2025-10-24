@@ -447,7 +447,7 @@ function CalendarManager({ listings, bookings }) {
       {/* Bulk Action Modal */}
       {showBulkModal && (
         <div className="modal-overlay">
-          <div className="modal-content">
+          <div className="calmodal-content">
             <h3>Confirm Bulk Action</h3>
             <p>
               Are you sure you want to {bulkAction} {selectedDates.length} date{selectedDates.length !== 1 ? 's' : ''}?

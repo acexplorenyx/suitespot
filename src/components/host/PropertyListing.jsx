@@ -388,8 +388,8 @@ function PropertyListing({ onSave, initialData = null }) {
         hostId: user.uid,
         hostName: user.displayName || 'Anonymous Host',
         hostEmail: user.email,
-        status: 'published',
-        publishedAt: new Date(),
+        status: 'pending',
+        publishedAt: null, // Will be set when approved
         createdAt: initialData?.createdAt || new Date(),
         updatedAt: new Date(),
         hostPoints: (initialData?.hostPoints || 0) + pointsEarned,

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { signInWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
+import { signInWithEmailAndPassword, sendEmailVerification, setPersistence, browserSessionPersistence, browserLocalPersistence, sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../../firebase/firebase';
 import GoogleLoginBtn from './GoogleLoginBtn';
-// import '../../styles/authmodalstyle.css';
+import '../../styles/authmodalstyle.css';
 
 function Login({ onClose, switchToRegister }) {
     const [email, setEmail] = useState("");
@@ -13,7 +13,6 @@ function Login({ onClose, switchToRegister }) {
     const [isVisible, setIsVisible] = useState(false);
 
     useEffect(() => {
-        // Trigger entrance animation
         setTimeout(() => setIsVisible(true), 100);
     }, []);
 
@@ -35,34 +34,64 @@ function Login({ onClose, switchToRegister }) {
         setErrors({});
 
         try {
+            // Set persistence based on rememberMe
+            const persistence = rememberMe ? browserLocalPersistence : browserSessionPersistence;
+            await setPersistence(auth, persistence);
+
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            const user = userCredential.user;
 
             // Check if email is verified
-            // In the handleLogin function, after checking email verification:
-            if (!userCredential.user.emailVerified) {
-                // Offer to resend verification email
-                const resendVerification = window.confirm(
-                    "Your email is not verified. Would you like us to resend the verification email?"
-                );
-                
-                if (resendVerification) {
-                    try {
-                        await sendEmailVerification(userCredential.user);
-                        alert("Verification email sent! Please check your inbox and verify your email before logging in.");
-                    } catch (error) {
-                        console.error("Error sending verification email:", error);
-                        alert("Failed to send verification email. Please try again later.");
+            if (!user.emailVerified) {
+                // Check if we've already sent too many verification emails
+                const verificationCount = localStorage.getItem(`verification_${user.email}`) || 0;
+
+                // Check if verification email was sent recently (prevent duplicates)
+                const lastSent = localStorage.getItem(`verification_sent_${user.email}`);
+                const now = Date.now();
+                const recentlySent = lastSent && now - parseInt(lastSent) < 60000; // 1 minute
+
+                if (verificationCount < 3 && !recentlySent) {
+                    const resendVerification = window.confirm(
+                        "Your email is not verified. Would you like us to resend the verification email?"
+                    );
+
+                    if (resendVerification) {
+                        try {
+                            const actionCodeSettings = {
+                                url: `${window.location.origin}/verify-success?email=${encodeURIComponent(user.email)}&name=${encodeURIComponent(user.displayName || '')}`,
+                                handleCodeInApp: true
+                            };
+                            await sendEmailVerification(user, actionCodeSettings);
+                            localStorage.setItem(`verification_${user.email}`, parseInt(verificationCount) + 1);
+                            localStorage.setItem(`verification_sent_${user.email}`, now.toString());
+                            alert("Verification email sent! Please check your inbox and verify your email before logging in.");
+                        } catch (error) {
+                            console.error("Error sending verification email:", error);
+                            if (error.code === 'auth/too-many-requests') {
+                                alert("Too many verification attempts. Please try again later.");
+                            } else {
+                                alert("Failed to send verification email. Please try again later.");
+                            }
+                        }
                     }
+                } else if (recentlySent) {
+                    alert("Verification email already sent recently. Please check your inbox.");
+                } else {
+                    alert("Too many verification emails sent. Please check your inbox or wait before requesting another.");
                 }
-                
-                setErrors({ 
-                    general: "Please verify your email before logging in. Check your inbox for the verification link." 
+
+                setErrors({
+                    general: "Please verify your email before logging in. Check your inbox for the verification link."
                 });
                 setIsLoading(false);
                 return;
             }
 
             console.log("Login successful!");
+
+            // Clear verification count on successful login
+            localStorage.removeItem(`verification_${user.email}`);
 
             // Add success animation before closing
             document.querySelector('.auth-content')?.classList.add('success');
@@ -83,6 +112,10 @@ function Login({ onClose, switchToRegister }) {
                 errorMessage = "Invalid email or password";
             } else if (error.code === 'auth/too-many-requests') {
                 errorMessage = "Too many attempts. Please try again later.";
+            } else if (error.code === 'auth/user-disabled') {
+                errorMessage = "This account has been disabled. Please contact support.";
+            } else if (error.code === 'auth/network-request-failed') {
+                errorMessage = "Network error. Please check your connection.";
             }
 
             setErrors({ general: errorMessage });
@@ -103,19 +136,39 @@ function Login({ onClose, switchToRegister }) {
         setErrors({ general: error.message });
     };
 
-    const handleForgotPassword = () => {
-        // Implement forgot password flow
-        alert("Forgot password feature coming soon!");
+    const handleForgotPassword = async () => {
+        if (!email) {
+            alert("Please enter your email address first.");
+            return;
+        }
+
+        try {
+            await sendPasswordResetEmail(auth, email);
+            alert("Password reset email sent! Check your inbox.");
+        } catch (error) {
+            console.error("Error sending password reset email:", error);
+            let errorMessage = "Failed to send password reset email. Please try again.";
+            if (error.code === 'auth/invalid-email') {
+                errorMessage = "Invalid email address.";
+            } else if (error.code === 'auth/user-not-found') {
+                errorMessage = "No account found with this email address.";
+            } else if (error.code === 'auth/too-many-requests') {
+                errorMessage = "Too many requests. Please try again later.";
+            }
+            alert(errorMessage);
+        }
     };
 
     return (
         <div className={`auth-content ${isVisible ? 'visible' : ''}`}>
             {/* Enhanced Google Login */}
             <div className="social-login-section">
-                <GoogleLoginBtn 
+                <GoogleLoginBtn
                     onSuccess={handleGoogleSuccess}
-                    onError={handleGoogleError} 
+                    onError={handleGoogleError}
                     variant="enhanced"
+                    text="Sign in with Google"
+                    rememberMe={rememberMe}
                 />
             </div>
 
@@ -137,7 +190,7 @@ function Login({ onClose, switchToRegister }) {
                     />
                     {errors.email && (
                         <div className="error-message animated-error">
-                            <span className="error-icon">⚠️</span>
+                            <span className="login-error-icon">⚠️</span>
                             {errors.email}
                         </div>
                     )}
@@ -160,7 +213,7 @@ function Login({ onClose, switchToRegister }) {
                     </div>
                     {errors.password && (
                         <div className="error-message animated-error">
-                            <span className="error-icon">⚠️</span>
+                            <span className="login-error-icon">⚠️</span>
                             {errors.password}
                         </div>
                     )}
@@ -198,7 +251,7 @@ function Login({ onClose, switchToRegister }) {
                     ) : (
                         <>
                             <span className="btn-icon">→</span>
-                            <span className="btn-text">Sign In</span>
+                            <span className="btn-text">Login</span>
                         </>
                     )}
                 </button>

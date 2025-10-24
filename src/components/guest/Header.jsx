@@ -3,12 +3,9 @@ import React, { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from '../../firebase/firebase';
-import logo from '../../images/SuiteSpot-logo.png';
-import homeicon from '../../images/building.gif';
-import xpicon from '../../images/experience.gif';
-import serviceicon from '../../images/bell.gif';
-import { FaBars, FaTimes, FaUser, FaHeart, FaCog, FaSignOutAlt } from "react-icons/fa";
-import AuthModal from './AuthModal';
+import logoImage from '/logo.ico';
+import { FaBars, FaTimes, FaUser, FaHeart, FaCog, FaSignOutAlt, FaHome, FaMapMarkerAlt, FaConciergeBell } from "react-icons/fa";
+import AuthModal from '../common/AuthModal';
 
 function Navbar() {
     const [menuOpen, setMenuOpen] = useState(false);
@@ -61,7 +58,8 @@ function Navbar() {
     return (
         <nav className="navbar">
             <div className="navbar-brand">
-                <a href="/"><img src={logo} alt="SuiteSpot Logo" className="navbar-logo" /></a>
+                <img src={logoImage} alt="SuiteSpot Logo" className="logo-img" />
+                <span className="logo-text">SuiteSpot</span>
             </div>
 
             {/* Hamburger menu for mobile */}
@@ -72,15 +70,15 @@ function Navbar() {
             <div className={`navbar-center ${menuOpen ? 'mobile-menu-open' : ''}`}>
                 <ul className="navbar-links">
                 <li className="nav-item active">
-                    <img src={homeicon} alt="Home" className="nav-icon" />
+                    <FaHome className="nav-icon animated-icon" />
                     <a href="/">Home</a>
                 </li>
                 <li className="nav-item">
-                    <img src={xpicon} alt="Experiences" className="nav-icon" />
+                    <FaMapMarkerAlt className="nav-icon animated-icon" />
                     <a href="/experiences">Experiences</a>
                 </li>
                 <li className="nav-item">
-                    <img src={serviceicon} alt="Services" className="nav-icon" />
+                    <FaConciergeBell className="nav-icon animated-icon" />
                     <a href="/services">Services</a>
                 </li>
                 </ul>

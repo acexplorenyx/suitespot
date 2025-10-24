@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification } from 'firebase/auth';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { auth } from '../../firebase/firebase';
 import GoogleLoginBtn from './GoogleLoginBtn';
 import EmailVerification from './EmailVerification';
@@ -17,22 +17,75 @@ function Registration({ onClose, switchToLogin }) {
     const [errors, setErrors] = useState({});
     const [passwordStrength, setPasswordStrength] = useState(0);
     const [isVisible, setIsVisible] = useState(false);
-    const [showVerification, setShowVerification] = useState(false); // Add this state
-    const [userPendingVerification, setUserPendingVerification] = useState(null); // Add this state
+    const [showVerification, setShowVerification] = useState(false);
+    const [userPendingVerification, setUserPendingVerification] = useState(null);
 
     useEffect(() => {
         setTimeout(() => setIsVisible(true), 100);
     }, []);
 
-    const validateForm = () => {
+    // Enhanced email validation
+    const validateEmail = async (email) => {
+        // Basic format validation
+        if (!/\S+@\S+\.\S+/.test(email)) {
+            return { isValid: false, message: "Please enter a valid email address" };
+        }
+
+        // Domain validation
+        const domain = email.split('@')[1];
+        const disposableDomains = ['tempmail.com', 'throwaway.com', 'fake.com', 'example.com'];
+        const commonProviders = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'icloud.com'];
+        
+        if (disposableDomains.includes(domain)) {
+            return { isValid: false, message: "Please use a permanent email address" };
+        }
+
+        // MX record check (simplified)
+        try {
+            // This is a simplified check - in production, you might want to use a service
+            if (!commonProviders.includes(domain) && !domain.includes('.')) {
+                return { isValid: false, message: "Please use a valid email provider" };
+            }
+        } catch (error) {
+            console.log("Email validation skipped:", error);
+        }
+
+        return { isValid: true };
+    };
+
+    const validateForm = async () => {
         const newErrors = {};
         
-        if (!formData.fullName.trim()) newErrors.fullName = "Full name is required";
-        if (!formData.email) newErrors.email = "Email is required";
-        else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = "Please enter a valid email address";
-        if (!formData.password) newErrors.password = "Password is required";
-        else if (formData.password.length < 6) newErrors.password = "Password must be at least 6 characters";
-        if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = "Passwords don't match";
+        // Name validation
+        if (!formData.fullName.trim()) {
+            newErrors.fullName = "Full name is required";
+        } else if (formData.fullName.trim().length < 2) {
+            newErrors.fullName = "Full name must be at least 2 characters";
+        }
+
+        // Email validation
+        if (!formData.email) {
+            newErrors.email = "Email is required";
+        } else {
+            const emailValidation = await validateEmail(formData.email);
+            if (!emailValidation.isValid) {
+                newErrors.email = emailValidation.message;
+            }
+        }
+
+        // Password validation
+        if (!formData.password) {
+            newErrors.password = "Password is required";
+        } else if (formData.password.length < 6) {
+            newErrors.password = "Password must be at least 6 characters";
+        } else if (passwordStrength < 50) {
+            newErrors.password = "Please choose a stronger password";
+        }
+
+        // Confirm password
+        if (formData.password !== formData.confirmPassword) {
+            newErrors.confirmPassword = "Passwords don't match";
+        }
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -41,10 +94,12 @@ function Registration({ onClose, switchToLogin }) {
     const checkPasswordStrength = (password) => {
         let strength = 0;
         if (password.length >= 6) strength += 25;
+        if (password.length >= 8) strength += 10;
         if (/[A-Z]/.test(password)) strength += 25;
+        if (/[a-z]/.test(password)) strength += 10;
         if (/[0-9]/.test(password)) strength += 25;
-        if (/[^A-Za-z0-9]/.test(password)) strength += 25;
-        return strength;
+        if (/[^A-Za-z0-9]/.test(password)) strength += 15;
+        return Math.min(strength, 100);
     };
 
     const handleInputChange = (field, value) => {
@@ -67,11 +122,15 @@ function Registration({ onClose, switchToLogin }) {
 
     const handleRegister = async (e) => {
         e.preventDefault();
-        if (!validateForm()) return;
-        
         setIsLoading(true);
         setErrors({});
 
+        const isValid = await validateForm();
+        if (!isValid) {
+            setIsLoading(false);
+            return;
+        }
+        
         try {
             // Create user account
             const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
@@ -82,10 +141,8 @@ function Registration({ onClose, switchToLogin }) {
                 displayName: formData.fullName
             });
 
-            // Send email verification
-            await sendEmailVerification(user);
-            
-            console.log("Verification email sent to:", user.email);
+            // DON'T send verification email here - let EmailVerification component handle it
+            console.log("User created successfully:", user.email);
             
             // Show verification screen
             setUserPendingVerification(user);
@@ -108,6 +165,10 @@ function Registration({ onClose, switchToLogin }) {
                 errorMessage = "Please enter a valid email address.";
             } else if (error.code === 'auth/operation-not-allowed') {
                 errorMessage = "Email/password accounts are not enabled. Please contact support.";
+            } else if (error.code === 'auth/network-request-failed') {
+                errorMessage = "Network error. Please check your connection and try again.";
+            } else if (error.code === 'auth/too-many-requests') {
+                errorMessage = "Too many attempts. Please try again later.";
             }
             
             setErrors({ general: errorMessage });
@@ -205,7 +266,7 @@ function Registration({ onClose, switchToLogin }) {
                     />
                     {errors.fullName && (
                         <div className="error-message animated-error">
-                            <span className="error-icon">⚠️</span>
+                            <span className="reg-error-icon">⚠️</span>
                             {errors.fullName}
                         </div>
                     )}
@@ -223,7 +284,7 @@ function Registration({ onClose, switchToLogin }) {
                     />
                     {errors.email && (
                         <div className="error-message animated-error">
-                            <span className="error-icon">⚠️</span>
+                            <span className="reg-error-icon">⚠️</span>
                             {errors.email}
                         </div>
                     )}
@@ -277,14 +338,20 @@ function Registration({ onClose, switchToLogin }) {
                                 <span className={formData.password.length >= 6 ? 'met' : ''}>
                                     ✓ At least 6 characters
                                 </span>
+                                <span className={formData.password.length >= 8 ? 'met' : ''}>
+                                    ✓ 8+ characters (better)
+                                </span>
                                 <span className={/[A-Z]/.test(formData.password) ? 'met' : ''}>
-                                    ✓ One uppercase letter
+                                    ✓ Uppercase letter
+                                </span>
+                                <span className={/[a-z]/.test(formData.password) ? 'met' : ''}>
+                                    ✓ Lowercase letter
                                 </span>
                                 <span className={/[0-9]/.test(formData.password) ? 'met' : ''}>
-                                    ✓ One number
+                                    ✓ Number
                                 </span>
                                 <span className={/[^A-Za-z0-9]/.test(formData.password) ? 'met' : ''}>
-                                    ✓ One special character
+                                    ✓ Special character
                                 </span>
                             </div>
                         </div>
@@ -292,7 +359,7 @@ function Registration({ onClose, switchToLogin }) {
                     
                     {errors.password && (
                         <div className="error-message animated-error">
-                            <span className="error-icon">⚠️</span>
+                            <span className="reg-error-icon">⚠️</span>
                             {errors.password}
                         </div>
                     )}
@@ -310,7 +377,7 @@ function Registration({ onClose, switchToLogin }) {
                     />
                     {errors.confirmPassword && (
                         <div className="error-message animated-error">
-                            <span className="error-icon">⚠️</span>
+                            <span className="reg-error-icon">⚠️</span>
                             {errors.confirmPassword}
                         </div>
                     )}
@@ -318,7 +385,7 @@ function Registration({ onClose, switchToLogin }) {
 
                 {errors.general && (
                     <div className="error-banner animated-error">
-                        <span className="error-icon">❌</span>
+                        <span className="reg-error-icon">❌</span>
                         {errors.general}
                     </div>
                 )}
@@ -335,7 +402,6 @@ function Registration({ onClose, switchToLogin }) {
                         </>
                     ) : (
                         <>
-                            <span className="btn-icon">✨</span>
                             <span className="btn-text">Create Account</span>
                         </>
                     )}

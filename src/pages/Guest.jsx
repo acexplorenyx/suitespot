@@ -1,21 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import "../styles/gueststyle.css";
-import Navbar from '../components/common/Header';
+import Navbar from '../components/guest/Header';
 import Searchbar from '../components/common/SearchBar';
-import Footer from '../components/common/Footer';
-import { FaHotel, FaHeart, FaShare, FaStar, FaMapMarkerAlt, FaFilter, FaTimes } from "react-icons/fa";
-
-// Images
-import hotel1 from '../images/pexels.jpg';
-import hotel2 from '../images/hotelpic-blue.png';
-import hotel3 from '../images/hotelsamplepic.jpg';
-import hotel4 from '../images/picwithneon.jpg';
+import Footer from '../components/guest/Footer';
+import BookingModal from '../components/guest/BookingModal';
+import { FaHotel, FaHeart, FaShare, FaStar, FaMapMarkerAlt, FaFilter, FaTimes, FaConciergeBell } from "react-icons/fa";
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '../firebase/firebase';
 
 function GuestDashboard() {
     const [properties, setProperties] = useState([]);
     const [favorites, setFavorites] = useState([]);
     const [filteredProperties, setFilteredProperties] = useState([]);
-    const [activeCategory, setActiveCategory] = useState('all');
+
     const [showFilters, setShowFilters] = useState(false);
     const [searchFilters, setSearchFilters] = useState({
         priceRange: [0, 1000],
@@ -23,97 +20,47 @@ function GuestDashboard() {
         rating: 0,
         propertyType: 'all'
     });
+    const [showBookingModal, setShowBookingModal] = useState(false);
+    const [selectedProperty, setSelectedProperty] = useState(null);
 
-    // Mock data - in real app, fetch from Firebase
+    // Fetch approved listings from Firebase
     useEffect(() => {
-        const mockProperties = [
-            {
-                id: 1,
-                title: "Luxury Beachfront Villa",
-                category: "home",
-                type: "entire-place",
-                price: 250,
-                discount: 15,
-                rating: 4.8,
-                reviews: 124,
-                location: "Bali, Indonesia",
-                images: [hotel1],
-                amenities: ["WiFi", "Pool", "Kitchen", "Air Conditioning"],
-                maxGuests: 6,
-                bedrooms: 3,
-                beds: 4,
-                bathrooms: 2,
-                isFeatured: true,
-                host: {
-                    name: "Sarah Johnson",
-                    isSuperhost: true
-                }
-            },
-            {
-                id: 2,
-                title: "Modern City Apartment",
-                category: "home",
-                type: "entire-place",
-                price: 120,
-                discount: 0,
-                rating: 4.5,
-                reviews: 89,
-                location: "Manila, Philippines",
-                images: [hotel2],
-                amenities: ["WiFi", "Kitchen", "TV", "Washer"],
-                maxGuests: 4,
-                bedrooms: 2,
-                beds: 2,
-                bathrooms: 1,
-                isFeatured: false,
-                host: {
-                    name: "Miguel Santos",
-                    isSuperhost: false
-                }
-            },
-            {
-                id: 3,
-                title: "Traditional Cooking Class",
-                category: "experience",
-                type: "experience",
-                price: 45,
-                discount: 10,
-                rating: 4.9,
-                reviews: 67,
-                location: "Tokyo, Japan",
-                images: [hotel3],
-                amenities: ["Meals Included", "Local Guide", "Group Activity"],
-                maxGuests: 8,
-                duration: "3 hours",
-                host: {
-                    name: "Yuki Tanaka",
-                    isSuperhost: true
-                }
-            },
-            {
-                id: 4,
-                title: "Professional Photography Session",
-                category: "service",
-                type: "service",
-                price: 150,
-                discount: 0,
-                rating: 4.7,
-                reviews: 42,
-                location: "Your Location",
-                images: [hotel4],
-                amenities: ["Professional Equipment", "Digital Copies", "1 Hour Session"],
-                maxGuests: 1,
-                duration: "1 hour",
-                host: {
-                    name: "Alex Chen",
-                    isSuperhost: true
-                }
-            }
-        ];
+        const fetchProperties = async () => {
+            try {
+                // Query for approved listings only
+                const propertiesQuery = query(
+                    collection(db, 'properties'),
+                    where('status', '==', 'approved')
+                );
 
-        setProperties(mockProperties);
-        setFilteredProperties(mockProperties);
-        
+                const snapshot = await getDocs(propertiesQuery);
+                const propertiesData = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data(),
+                    // Map Firebase data to component expected format
+                    location: doc.data().location ? `${doc.data().location.city}, ${doc.data().location.country}` : 'Location not specified',
+                    host: {
+                        name: doc.data().hostName || 'Unknown Host',
+                        isSuperhost: doc.data().isSuperhost || false
+                    },
+                    rating: doc.data().rating || 0,
+                    reviews: doc.data().reviews || 0,
+                    discount: doc.data().discount || 0,
+                    isFeatured: doc.data().isFeatured || false
+                }));
+
+                setProperties(propertiesData);
+                setFilteredProperties(propertiesData);
+            } catch (error) {
+                console.error('Error fetching properties:', error);
+                // Fallback to empty array if Firebase fails
+                setProperties([]);
+                setFilteredProperties([]);
+            }
+        };
+
+        fetchProperties();
+
         // Load favorites from localStorage
         const savedFavorites = JSON.parse(localStorage.getItem('favorites') || '[]');
         setFavorites(savedFavorites);
@@ -144,24 +91,11 @@ function GuestDashboard() {
         }
     };
 
-    // Filter properties by category
-    const filterByCategory = (category) => {
-        setActiveCategory(category);
-        if (category === 'all') {
-            setFilteredProperties(properties);
-        } else {
-            setFilteredProperties(properties.filter(prop => prop.category === category));
-        }
-    };
+
 
     // Apply search filters
     const applyFilters = () => {
         let filtered = properties;
-
-        // Category filter
-        if (activeCategory !== 'all') {
-            filtered = filtered.filter(prop => prop.category === activeCategory);
-        }
 
         // Price range filter
         filtered = filtered.filter(prop =>
@@ -195,18 +129,24 @@ function GuestDashboard() {
         setShowFilters(false);
     };
 
+    // Handle booking
+    const handleBookNow = (property) => {
+        setSelectedProperty(property);
+        setShowBookingModal(true);
+    };
+
+    // Handle booking success
+    const handleBookingSuccess = (bookingId) => {
+        console.log('Booking created successfully:', bookingId);
+        // Could add booking confirmation logic here
+    };
+
     // Get discounted price
     const getDiscountedPrice = (price, discount) => {
         return price * (1 - discount / 100);
     };
 
-    // Categories for filtering
-    const categories = [
-        { key: 'all', label: 'All', icon: '🏠' },
-        { key: 'home', label: 'Homes', icon: '🏠' },
-        { key: 'experience', label: 'Experiences', icon: '🎪' },
-        { key: 'service', label: 'Services', icon: '🔧' }
-    ];
+
 
     return (
         <div className="guestdb-container">
@@ -214,6 +154,22 @@ function GuestDashboard() {
             
             {/* Hero Section */}
             <div className="guestdb-content">
+                {/* Category Tabs */}
+                <div className="category-tabs">
+                    <button className="category-tab active">
+                        <FaHotel className="category-icon" />
+                        Stays
+                    </button>
+                    <button className="category-tab">
+                        <FaMapMarkerAlt className="category-icon" />
+                        Experiences
+                    </button>
+                    <button className="category-tab">
+                        <FaConciergeBell className="category-icon" />
+                        Services
+                    </button>
+                </div>
+
                 <h1>Welcome to SuiteSpot</h1>
                 <h2 className="tagline">
                     From Comfort to Experience — All in One Spot.
@@ -225,28 +181,15 @@ function GuestDashboard() {
 
             {/* Main Content */}
             <div className="dashboard-section">
-                {/* Category Filter */}
-                <section className="category-filter">
-                    <div className="filter-tabs">
-                        {categories.map(category => (
-                            <button
-                                key={category.key}
-                                className={`filter-tab ${activeCategory === category.key ? 'active' : ''}`}
-                                onClick={() => filterByCategory(category.key)}
-                            >
-                                <span className="category-icon">{category.icon}</span>
-                                {category.label}
-                            </button>
-                        ))}
-                    </div>
-                    
-                    <button 
+                {/* Filters Button */}
+                <div className="filters-section">
+                    <button
                         className="filter-toggle"
                         onClick={() => setShowFilters(!showFilters)}
                     >
                         <FaFilter /> Filters
                     </button>
-                </section>
+                </div>
 
                 {/* Advanced Filters */}
                 {showFilters && (
@@ -320,12 +263,12 @@ function GuestDashboard() {
 
                 {/* Featured Properties */}
                 <section className="featured-properties">
-                    <h2>Featured Stays</h2>
+                    <h2>Featured stays in Philippines</h2>
                     <div className="properties-grid">
                         {filteredProperties
                             .filter(prop => prop.isFeatured)
                             .map(property => (
-                                <PropertyCard 
+                                <PropertyCard
                                     key={property.id}
                                     property={property}
                                     isFavorite={favorites.includes(property.id)}
@@ -339,10 +282,10 @@ function GuestDashboard() {
 
                 {/* All Properties */}
                 <section className="all-properties">
-                    <h2>Explore Stays</h2>
+                    <h2>Explore stays</h2>
                     <div className="properties-grid">
                         {filteredProperties.map(property => (
-                            <PropertyCard 
+                            <PropertyCard
                                 key={property.id}
                                 property={property}
                                 isFavorite={favorites.includes(property.id)}
@@ -351,7 +294,7 @@ function GuestDashboard() {
                             />
                         ))}
                     </div>
-                    
+
                     {filteredProperties.length === 0 && (
                         <div className="no-properties">
                             <div className="empty-state">
@@ -365,13 +308,13 @@ function GuestDashboard() {
 
                 {/* Recommended Stays */}
                 <section className="recommended-stays">
-                    <h2><FaHotel className="section-icon" /> Recommended For You</h2>
+                    <h2>Recommended for you</h2>
                     <div className="properties-grid">
                         {properties
                             .filter(prop => prop.rating >= 4.5)
                             .slice(0, 4)
                             .map(property => (
-                                <PropertyCard 
+                                <PropertyCard
                                     key={property.id}
                                     property={property}
                                     isFavorite={favorites.includes(property.id)}
@@ -386,12 +329,12 @@ function GuestDashboard() {
                 {/* Favorites Section */}
                 {favorites.length > 0 && (
                     <section className="favorites-section">
-                        <h2>❤️ Your Favorites</h2>
+                        <h2>Your favorites</h2>
                         <div className="properties-grid">
                             {properties
                                 .filter(prop => favorites.includes(prop.id))
                                 .map(property => (
-                                    <PropertyCard 
+                                    <PropertyCard
                                         key={property.id}
                                         property={property}
                                         isFavorite={true}
@@ -404,7 +347,19 @@ function GuestDashboard() {
                     </section>
                 )}
             </div>
-            
+
+            {/* Booking Modal */}
+            {showBookingModal && selectedProperty && (
+                <BookingModal
+                    property={selectedProperty}
+                    onClose={() => {
+                        setShowBookingModal(false);
+                        setSelectedProperty(null);
+                    }}
+                    onBookingSuccess={handleBookingSuccess}
+                />
+            )}
+
             <Footer />
         </div>
     );
@@ -548,8 +503,8 @@ function PropertyCard({ property, isFavorite, onToggleFavorite, onShare }) {
                     )}
                 </div>
 
-                <button className="book-now-btn">
-                    View Details
+                <button className="book-now-btn" onClick={() => handleBookNow(property)}>
+                    Book Now
                 </button>
             </div>
         </div>

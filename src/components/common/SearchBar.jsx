@@ -1,6 +1,60 @@
 import React from 'react';
 import '../../styles/searchbar.css';
 import { FaMapMarkerAlt, FaCalendarAlt, FaUser, FaChevronLeft, FaChevronRight, FaSearch } from "react-icons/fa";
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+
+// Map Events Component for handling clicks
+function MapEventsComponent({ onLocationSelect }) {
+    const [selectedPosition, setSelectedPosition] = React.useState(null);
+
+    const map = useMapEvents({
+        click(e) {
+            const { lat, lng } = e.latlng;
+            setSelectedPosition([lat, lng]);
+
+            // Reverse geocode to get address
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.display_name) {
+                        const addressParts = data.address;
+                        onLocationSelect({
+                            address: data.display_name,
+                            coordinates: { lat, lng },
+                            city: addressParts.city || addressParts.town || addressParts.village || '',
+                            province: addressParts.state || addressParts.region || '',
+                            country: addressParts.country || ''
+                        });
+                    } else {
+                        onLocationSelect({
+                            address: `Location at ${lat.toFixed(6)}, ${lng.toFixed(6)}`,
+                            coordinates: { lat, lng }
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Geocoding error:', error);
+                    onLocationSelect({
+                        address: `Location at ${lat.toFixed(6)}, ${lng.toFixed(6)}`,
+                        coordinates: { lat, lng }
+                    });
+                });
+        },
+    });
+
+    return selectedPosition ? (
+        <Marker position={selectedPosition}>
+            <Popup>
+                <div>
+                    <strong>Selected Location</strong><br />
+                    {selectedPosition[0].toFixed(6)}, {selectedPosition[1].toFixed(6)}
+                </div>
+            </Popup>
+        </Marker>
+    ) : null;
+}
 
 function SearchBar() {
     const [isDateOpen, setDateOpen] = React.useState(false);
@@ -15,6 +69,17 @@ function SearchBar() {
     const [children, setChildCount] = React.useState(0);
     const [pets, setPets] = React.useState(false);
 
+    // Location suggestions
+    const [isLocationOpen, setIsLocationOpen] = React.useState(false);
+    const [showMap, setShowMap] = React.useState(false);
+    const [locationSuggestions, setLocationSuggestions] = React.useState([
+        { text: 'New York, NY', subtext: 'United States', icon: 'FaMapMarkerAlt' },
+        { text: 'Los Angeles, CA', subtext: 'United States', icon: 'FaMapMarkerAlt' },
+        { text: 'London', subtext: 'United Kingdom', icon: 'FaMapMarkerAlt' },
+        { text: 'Paris', subtext: 'France', icon: 'FaMapMarkerAlt' },
+        { text: 'Tokyo', subtext: 'Japan', icon: 'FaMapMarkerAlt' },
+    ]);
+
     const toggleDatePicker = () => {
         setDateOpen(!isDateOpen);
         if (!isDateOpen) setIsGuestOpen(false);
@@ -27,9 +92,10 @@ function SearchBar() {
 
     React.useEffect(() => {
         const handleClickOutside = (e) => {
-            if (!e.target.closest('.search-input') && !e.target.closest('.guests-box') && !e.target.closest('.calendar-popup')) {
+            if (!e.target.closest('.search-input') && !e.target.closest('.guests-box') && !e.target.closest('.calendar-popup') && !e.target.closest('.location-suggestions')) {
                 setDateOpen(false);
                 setIsGuestOpen(false);
+                setIsLocationOpen(false);
             }
         };
         document.addEventListener('click', handleClickOutside);
@@ -136,28 +202,45 @@ function SearchBar() {
                 
                 {/* Location */}
                 <div className="search-input location">
-                    <FaMapMarkerAlt className="search-icon" />
-                    <input 
-                        type="text" 
-                        placeholder="Where to?" 
-                        value={location}
-                        onChange={(e) => setLocation(e.target.value)}
-                    />
+                    <div className="input-wrapper">
+                        <FaMapMarkerAlt className="search-icon" />
+                        <input
+                            type="text"
+                            placeholder="Where to?"
+                            value={location}
+                            onChange={(e) => setLocation(e.target.value)}
+                            onFocus={() => {
+                                setIsLocationOpen(true);
+                                setDateOpen(false);
+                                setIsGuestOpen(false);
+                            }}
+                        />
+                    </div>
                 </div>
 
                 {/* Dates */}
-                <div className="search-input date" onClick={() => toggleDatePicker()}>
-                    <FaCalendarAlt className="search-icon" />
-                    <input type="text" readOnly placeholder="Dates"
-                        value={selectedDates?.startDate && selectedDates?.endDate ? 
-                            `${selectedDates.startDate.toLocaleDateString()} → ${selectedDates.endDate.toLocaleDateString()}` : "Any dates"} />
+                <div className="search-input date" onClick={() => {
+                    toggleDatePicker();
+                    setIsLocationOpen(false);
+                }}>
+                    <div className="input-wrapper">
+                        <FaCalendarAlt className="search-icon" />
+                        <input type="text" readOnly placeholder="Any dates"
+                            value={selectedDates?.startDate && selectedDates?.endDate ?
+                                `${selectedDates.startDate.toLocaleDateString()} → ${selectedDates.endDate.toLocaleDateString()}` : ""} />
+                    </div>
                 </div>
 
                 {/* Guests */}
-                <div className="search-input guest" onClick={toggleGuestOptions}>
-                    <FaUser className="search-icon" />
-                    <input type="text" placeholder="Add Guests" readOnly value={totalGuests === 0 ? "Any guests" : 
-                        `${totalGuests} traveler${totalGuests > 1 ? "s" : ""}`} />
+                <div className="search-input guest" onClick={() => {
+                    toggleGuestOptions();
+                    setIsLocationOpen(false);
+                }}>
+                    <div className="input-wrapper">
+                        <FaUser className="search-icon" />
+                        <input type="text" placeholder="Add guests" readOnly value={totalGuests === 0 ? "" :
+                            `${totalGuests} traveler${totalGuests > 1 ? "s" : ""}`} />
+                    </div>
                 </div>
 
                 {/* Search Button */}
@@ -210,13 +293,75 @@ function SearchBar() {
                 </div>
             )}
 
+            {/* Location Suggestions */}
+            {isLocationOpen && (
+                <div className="location-suggestions">
+                    <div className="location-suggestion map-option" onClick={() => setShowMap(true)}>
+                        <FaMapMarkerAlt className="location-suggestion-icon" />
+                        <div>
+                            <div className="location-suggestion-text">Choose on map</div>
+                            <div className="location-suggestion-subtext">Search by moving the map</div>
+                        </div>
+                    </div>
+                    {locationSuggestions.map((suggestion, index) => (
+                        <div
+                            key={index}
+                            className="location-suggestion"
+                            onClick={() => {
+                                setLocation(suggestion.text);
+                                setIsLocationOpen(false);
+                            }}
+                        >
+                            <FaMapMarkerAlt className="location-suggestion-icon" />
+                            <div>
+                                <div className="location-suggestion-text">{suggestion.text}</div>
+                                <div className="location-suggestion-subtext">{suggestion.subtext}</div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* Map Modal */}
+            {showMap && (
+                <div className="map-modal" onClick={() => setShowMap(false)}>
+                    <div className="map-content" onClick={(e) => e.stopPropagation()}>
+                        <div className="map-header">
+                            <h3>Choose location</h3>
+                            <button onClick={() => setShowMap(false)}>×</button>
+                        </div>
+                        <div className="map-container">
+                            <MapContainer
+                                center={[14.5995, 120.9842]}
+                                zoom={10}
+                                style={{ height: '400px', width: '100%' }}
+                            >
+                                <TileLayer
+                                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                />
+                                <MapEventsComponent
+                                    onLocationSelect={(locationData) => {
+                                        setLocation(locationData.address || locationData.city || 'Selected Location');
+                                        setShowMap(false);
+                                        setIsLocationOpen(false);
+                                    }}
+                                />
+                            </MapContainer>
+                        </div>
+                        <div className="map-actions">
+                            <button onClick={() => setShowMap(false)}>Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Guest dropdown box */}
             {isGuestOpen && (
                 <div className="guests-box">
                     <div className="guest-row">
                         <div className="guest-info">
                             <span className="guest-label">Adults</span>
-                            <span className="guest-age">Ages 13+</span>
                         </div>
                         <div className="counter">
                             <button type="button" onClick={() => setAdultCount(Math.max(1, adults - 1))}>-</button>
@@ -228,7 +373,6 @@ function SearchBar() {
                     <div className="guest-row">
                         <div className="guest-info">
                             <span className="guest-label">Children</span>
-                            <span className="guest-age">Ages 2-12</span>
                         </div>
                         <div className="counter">
                             <button onClick={() => setChildCount(Math.max(0, children - 1))}>-</button>
@@ -239,7 +383,7 @@ function SearchBar() {
 
                     <div className="guest-pets">
                         <label>
-                            <input type="checkbox" checked={pets} onChange={(e) => setPets(e.target.checked)}/> 
+                            <input type="checkbox" checked={pets} onChange={(e) => setPets(e.target.checked)}/>
                             I am traveling with pets
                         </label>
                     </div>
